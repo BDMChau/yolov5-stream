@@ -1,0 +1,26 @@
+{
+   "exp": "exp7",
+   "imageCount": {
+      "/home/raptor-ai-flame/Flame/datasets/images": 0,
+      "/home/raptor-ai-flame/Flame/datasets/images/Book": 2446,
+      "/home/raptor-ai-flame/Flame/datasets/images/Box": 2211,
+      "/home/raptor-ai-flame/Flame/datasets/images/Person": 1690
+   },
+   "target": "train",
+   "data": {
+      "classes": [
+         "Person",
+         "Book",
+         "Box"
+      ],
+      "relationships": [],
+      "datasetDir": "openImagesData",
+      "weights": "weights/yolov5m.pt",
+      "imgSize": 640,
+      "batchSize": "32",
+      "epochs": "38",
+      "device": "",
+      "trainArgs": "yolov5/train.py --img 640 --batch 32 --epochs 38 --data /home/raptor-ai-flame/Flame/datasets/dataset.yaml --weights weights/yolov5m.pt --device "
+   },
+   "datasetYaml": "path: /home/raptor-ai-flame/Flame/datasets\ntrain: images\nval: images\n\nnames:\n  0: Person\n  1: Book\n  2: Box\n"
+}
