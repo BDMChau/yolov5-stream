@@ -2,7 +2,7 @@ const { spawn } = require("child_process");
 const fs = require("fs");
 const express = require("express");
 const async = require("async");
-// const { raptorInference, handleLoadModels } = require("./detector");
+const { raptorInference, handleLoadModels } = require("./detector");
 const { createCanvas, loadImage } = require("canvas");
 const { pipeline, Readable, PassThrough } = require("stream");
 const http = require("http");
@@ -24,13 +24,11 @@ const processFramesFromRTSPStream = async (url, queue, imagesStream, res) => {
     "-i",
     url,
     "-vf",
-    "scale=640:480,fps=10", // Extract 10 frame per second (you can adjust this)
+    "scale=640:480,fps=6", // Extract 10 frame per second (you can adjust this)
     "-c:v",
     "mjpeg",
     "-f",
-    "mpjpeg",
-    "-boundary_tag",
-    "raptorvision",
+    "image2pipe",
     "-",
   ]);
 
@@ -43,50 +41,36 @@ const processFramesFromRTSPStream = async (url, queue, imagesStream, res) => {
   //   "-f",
   //   "image2pipe",
   //   "-vf",
-  //   "scale=640:480,fps=10", // Extract 10 frame per second (you can adjust this)
+  //   "scale=640:480,fps=6", // Extract 6 frame per second (you can adjust this)
   //   "-c:v",
   //   "mjpeg",
   //   "-",
   // ]);
-  //   pipeline(ffmpeg.stdout, res, (err) => {
-  //     if (err) {
-  //       console.error("Error piping ffmpeg output to response:", err);
-  //       res.end();
-  //     } else {
-  //       console.log("pipe ok");
-  //     }
-  //   });
 
   ffmpeg.stdout.on("data", async (chunk) => {
     let frameData = [];
-    // console.log("chunk", chunk);
-    const buffer = Buffer.from(chunk, "utf-8");
-
     // const frameFileName = `imgs/frame_${Date.now()}.jpg`;
     // fs.writeFileSync(frameFileName, chunk);
 
     frameData.push(chunk);
-    try {
-      i++;
-      const task = {
-        frameBuffer: Buffer.concat(frameData),
-        i,
-        detectOptions: {
-          width,
-          height,
-          isObjectDetectionSeparate: false,
-        },
-      };
 
-      queue.push({
-        task,
-        callback: (imgBuffer) => {
-          handleCallback(imgBuffer, imagesStream);
-        },
-      });
-    } catch (err) {
-      console.log(err);
-    }
+    i++;
+    const task = {
+      frameBuffer: Buffer.concat(frameData),
+      i,
+      detectOptions: {
+        width,
+        height,
+        isObjectDetectionSeparate: false,
+      },
+    };
+
+    queue.push({
+      task,
+      callback: (imgBuffer) => {
+        handleCallback(imgBuffer, imagesStream);
+      },
+    });
   });
 
   ffmpeg.stderr.on("data", (data) => {
@@ -101,21 +85,40 @@ const processFramesFromRTSPStream = async (url, queue, imagesStream, res) => {
 };
 
 const handleCallback = (imgResult, imagesStream) => {
-  imagesStream.push(imgResult);
+  const ffmpeg = spawn("ffmpeg", [
+    "-i",
+    "-",
+    "-vf",
+    "scale=1280:720",
+    "-c:v",
+    "mjpeg",
+    "-f",
+    "mpjpeg",
+    "-boundary_tag",
+    "raptorvision",
+    "-",
+  ]);
+  ffmpeg.stdin.write(imgResult);
+  ffmpeg.stdin.end();
+
+  ffmpeg.stdout.on("data", (chunk) => {
+    console.log("chunk", chunk);
+    imagesStream.write(chunk);
+  });
 };
 
 const worker = async ({ task, callback }) => {
   const currentTime = new Date().getTime();
 
   let detectResponse = [];
-  //   try {
-  //     detectResponse = await raptorInference(
-  //       task.frameBuffer,
-  //       task.detectOptions
-  //     );
-  //   } catch (error) {
-  //     console.log("raptorInference ERROR:", error);
-  //   }
+  try {
+    detectResponse = await raptorInference(
+      task.frameBuffer,
+      task.detectOptions
+    );
+  } catch (error) {
+    console.log("raptorInference ERROR:", error);
+  }
 
   // Load the image from buffer
   try {
@@ -161,7 +164,7 @@ app.get(`/get-stream`, async (req, res) => {
     Pragma: "no-cache",
   });
 
-  //   await handleLoadModels();
+  await handleLoadModels(); // get detect model function
 
   const videoUrl = "https://cdn.shinobi.video/videos/theif4.mp4";
   // const videoUrl =
@@ -170,11 +173,9 @@ app.get(`/get-stream`, async (req, res) => {
   const rtspStreamUrl =
     "rtsp://raptor:Raptor123!@192.168.100.181:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif";
 
-  const imagesStream = new Readable({
-    read(size) {},
-  });
+  const imagesStream = new PassThrough();
   const queue = async.queue(worker, 1);
-  processFramesFromRTSPStream(videoUrl, queue, imagesStream, res);
+  processFramesFromRTSPStream(rtspStreamUrl, queue, imagesStream, res);
 
   pipeline(imagesStream, res, (err) => {
     if (err) {
