@@ -16,7 +16,7 @@ pathlib.PosixPath = pathlib.WindowsPath
 parser = argparse.ArgumentParser()
 parser.add_argument('--port', type=int, default=8989, help='port number')
 parser.add_argument('--weights', type=str, default='weights/yolov5s.pt', help='model path')
-parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
+parser.add_argument('--device', default='0', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
 parser.add_argument('--imgszw', type=int, default=640, help='inference width (pixels)')
 parser.add_argument('--imgszh', type=int, default=480, help='inference height (pixels)')
 parser.add_argument('--conf-thres', type=float, default=0.6, help='confidence threshold')
@@ -77,10 +77,7 @@ def detect():
     else:
         pred = model(im, augment=False, visualize=False)
 
-    # print("pred", pred)
-
     # Apply NMS
-
     pred = non_max_suppression(pred, 0.25, 0.45, None, False, 1000)
     # pred = non_max_suppression(pred, args.conf_thres, args.iou_thres, args.classes, args.agnostic_nms,max_det=args.max_det)
 
@@ -88,8 +85,8 @@ def detect():
     # Process detections and format the response
     detections = []
     for i, det in enumerate(pred):  # Iterate through images
+        print(det)
         if len(det):
-            print(det)
             # Rescale boxes from img_size to original size
             det[:, :4] = scale_boxes((imgsz[1], imgsz[0]), det[:, :4], img.shape).round()
 
