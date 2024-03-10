@@ -1,4 +1,3 @@
-const { spawn } = require("child_process");
 const fs = require("fs");
 const express = require("express");
 const async = require("async");
@@ -7,6 +6,7 @@ const { createCanvas, loadImage } = require("canvas");
 const { pipeline, PassThrough } = require("stream");
 const { exec } = require("child_process");
 const http = require("http");
+const { spawn } = require("child_process");
 
 let ffmpegProcess = null;
 let handleDataFfmpegProcess = null;
@@ -48,7 +48,7 @@ const processFramesFromRTSPStream = async (url, queue, imagesStream, res) => {
   //   "-",
   // ]);
 
-  handleDataFfmpegProcess = async (chunk) => {
+  ffmpegProcess.stdout.on("data", async (chunk) => {
     console.log("chunk", chunk);
 
     // const frameFileName = `imgs/frame_${Date.now()}.jpg`;
@@ -69,9 +69,7 @@ const processFramesFromRTSPStream = async (url, queue, imagesStream, res) => {
         handleCallback(imgBuffer, imagesStream);
       },
     });
-  };
-
-  ffmpegProcess.stdout.on("data", handleDataFfmpegProcess);
+  });
 
   ffmpegProcess.on("close", (code) => {
     if (code !== 0) {
@@ -159,15 +157,12 @@ app.get(`/get-stream`, async (req, res) => {
 
   res.on("close", () => {
     console.log("on close");
-    console.log("ffmpegProcess", ffmpegProcess);
     if (ffmpegProcess) {
-      ffmpegProcess.stdin.pause();
-      ffmpegProcess.kill();
-      if (handleDataFfmpegProcess) {
-        console.log("handleDataFfmpegProcess", handleDataFfmpegProcess);
-        ffmpegProcess.stdout.removeListener("data", handleDataFfmpegProcess);
-      }
+      exec(
+        `kill -9 $(ps -f -C ffmpeg | grep ${streamProc.pid} | awk '{print $2}`
+      );
 
+      ffmpegProcess.kill();
       ffmpegProcess = null;
     }
   });
