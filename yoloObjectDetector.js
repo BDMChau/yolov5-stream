@@ -1,9 +1,11 @@
-const fs = require("fs").promises;
 const axios = require("axios");
 const spawn = require("child_process").spawn;
 const FormData = require("form-data");
+const util = require("util");
+const exec = util.promisify(require("child_process").exec);
+const config = require("./config");
 
-const weightsPath = `${process.cwd()}/weights/yolov5s.pt`;
+const weightsPath = `${process.cwd()}/weights/${config.WEIGHT_FILE_NAME}`;
 const serverPath = `${process.cwd()}/yolov5/yolov5_flask_server.py`;
 const serverPort = 8989;
 
@@ -18,11 +20,6 @@ async function detect(imageBuffer) {
     formData.append("file", imageBuffer, {
       filename: `${new Date().getTime()}.jpg`,
     });
-    // const response = await fetch(flaskUrl + "/detect", {
-    //   method: "POST",
-    //   body: formData,
-    //   headers: formData.getHeaders(),
-    // });
 
     const response = await axios({
       method: "POST",
@@ -41,9 +38,17 @@ async function detect(imageBuffer) {
 }
 
 function loadModel(options = {}) {
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
     console.log("Loading Model...");
     options.onData = options.onData || function () {};
+
+    try {
+      // kill port if exist
+      await exec(`sudo kill -9 $(sudo lsof -t -i:${serverPort})`);
+    } catch (error) {
+      console.log("KILL SERVER PYTHON ERROR: ", error);
+    }
+
     modelProcess = spawn("python", [
       serverPath,
       "--port",
@@ -51,6 +56,7 @@ function loadModel(options = {}) {
       "--weights",
       weightsPath,
     ]);
+
     let onReady = (data) => {
       const lines = data.toString();
       if (lines.indexOf("Serving Flask app") > -1) {
@@ -63,6 +69,7 @@ function loadModel(options = {}) {
         resolve();
       }
     };
+
     modelProcess.stdout.on("data", onReady);
     modelProcess.stdout.on("data", (data) => {
       const lines = data.toString();

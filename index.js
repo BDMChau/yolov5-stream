@@ -1,15 +1,22 @@
-const fs = require("fs");
 const express = require("express");
 const async = require("async");
 const { raptorInference, handleLoadModels } = require("./detector");
 const { createCanvas, loadImage } = require("canvas");
 const { pipeline, PassThrough } = require("stream");
-const { exec } = require("child_process");
+const util = require("util");
+const exec = util.promisify(require("child_process").exec);
 const http = require("http");
 const { spawn } = require("child_process");
+const config = require("./config");
 
-let ffmpegProcess = null;
-let handleDataFfmpegProcess = null;
+const arrayFFmpegProcess = [];
+
+const configRatio = {
+  originalWidth: 1024,
+  originalHeight: 768,
+  detectWidth: 640,
+  detectHeight: 480,
+};
 
 const PORT = 5000;
 const app = express();
@@ -17,36 +24,37 @@ const httpServer = http.createServer(app);
 httpServer.listen({ port: PORT });
 console.log(`AiT Camera Stream Server running at http://localhost:${PORT}/`);
 
-const processFramesFromRTSPStream = async (url, queue, imagesStream, res) => {
-  let i = 0;
-
-  ffmpegProcess = spawn("ffmpeg", [
-    "-re",
-    "-i",
-    url,
-    "-vf",
-    "scale=640:480,fps=5",
-    "-c:v",
-    "mjpeg",
-    "-f",
-    "image2pipe",
-    "-",
-  ]);
-
+const processFramesFromRTSPStream = async (url, queue, imagesStream) => {
   // ffmpegProcess = spawn("ffmpeg", [
   //   "-re",
-  //   "-rtsp_transport",
-  //   "tcp",
   //   "-i",
   //   url,
-  //   "-f",
-  //   "image2pipe",
   //   "-vf",
-  //   "scale=640:480,fps=6",
+  //   "scale=640:480,fps=5",
   //   "-c:v",
   //   "mjpeg",
+  //   "-f",
+  //   "image2pipe",
   //   "-",
   // ]);
+
+  const ffmpegProcess = spawn("ffmpeg", [
+    "-re",
+    "-rtsp_transport",
+    "tcp",
+    "-i",
+    url,
+    "-f",
+    "image2pipe",
+    "-q:v",
+    "10",
+    "-vf",
+    `scale=${configRatio.originalWidth}:${configRatio.originalHeight},fps=6`,
+    "-c:v",
+    "mjpeg",
+    "-",
+  ]);
+  arrayFFmpegProcess.push(ffmpegProcess);
 
   ffmpegProcess.stdout.on("data", async (chunk) => {
     console.log("chunk", chunk);
@@ -54,10 +62,35 @@ const processFramesFromRTSPStream = async (url, queue, imagesStream, res) => {
     // const frameFileName = `imgs/frame_${Date.now()}.jpg`;
     // fs.writeFileSync(frameFileName, chunk);
 
-    i++;
+    handleDataForDetecting(queue, imagesStream, chunk);
+  });
+
+  ffmpegProcess.on("close", (code) => {
+    if (code !== 0) {
+      console.log("ffmpeg exited with code", code);
+    }
+  });
+};
+
+const handleDataForDetecting = (queue, imagesStream, originalChunk) => {
+  const ffmpegProcessOutput = spawn("ffmpeg", [
+    "-i",
+    "-",
+    "-vf",
+    `scale=${configRatio.detectWidth}:${configRatio.detectHeight}`,
+    "-f",
+    "image2pipe",
+    "-c:v",
+    "mjpeg",
+    "-",
+  ]);
+  ffmpegProcessOutput.stdin.write(originalChunk);
+  ffmpegProcessOutput.stdin.end();
+
+  ffmpegProcessOutput.stdout.on("data", (chunk) => {
     const task = {
       frameBuffer: chunk,
-      i,
+      originalChunk: originalChunk,
       detectOptions: {
         isObjectDetectionSeparate: false,
       },
@@ -70,20 +103,12 @@ const processFramesFromRTSPStream = async (url, queue, imagesStream, res) => {
       },
     });
   });
-
-  ffmpegProcess.on("close", (code) => {
-    if (code !== 0) {
-      console.log("ffmpeg exited with code", code);
-    }
-  });
 };
 
 const handleCallback = async (imgResult, imagesStream) => {
   const ffmpegProcessOutput = spawn("ffmpeg", [
     "-i",
     "-",
-    "-vf",
-    "scale=1280:720",
     "-c:v",
     "mjpeg",
     "-f",
@@ -115,7 +140,10 @@ const worker = async ({ task, callback }) => {
 
   // Load the image from buffer
   try {
-    const img = await loadImage(task.frameBuffer);
+    const ratioWidth = configRatio.originalWidth / configRatio.detectWidth;
+    const ratioHeight = configRatio.originalHeight / configRatio.detectHeight;
+
+    const img = await loadImage(task.originalChunk);
     const canvas = createCanvas(img.width, img.height);
     const ctx = canvas.getContext("2d");
     ctx.drawImage(img, 0, 0, img.width, img.height);
@@ -127,13 +155,22 @@ const worker = async ({ task, callback }) => {
       ctx.strokeStyle = "blue";
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.rect(x, y, width, height);
+      ctx.rect(
+        x * ratioWidth,
+        y * ratioHeight,
+        width * ratioWidth,
+        height * ratioHeight
+      );
       ctx.stroke();
 
       //draw label
       ctx.font = "16px Arial";
       ctx.fillStyle = "blue";
-      ctx.fillText(`${tag}: ${confidence.toFixed(2)}`, x, y - 5);
+      ctx.fillText(
+        `${tag}: ${confidence.toFixed(2)}`,
+        x * ratioWidth,
+        y * ratioHeight - 5
+      );
     }
 
     // Save the result image
@@ -155,30 +192,46 @@ app.get(`/get-stream`, async (req, res) => {
     Pragma: "no-cache",
   });
 
-  res.on("close", () => {
+  res.on("close", async () => {
     console.log("on close");
-    if (ffmpegProcess) {
-      exec(
-        `kill -9 $(ps -f -C ffmpeg | grep ${streamProc.pid} | awk '{print $2}`
-      );
 
-      ffmpegProcess.kill();
-      ffmpegProcess = null;
+    // Reload behavior: the close event will be called when connection is reloaded >> so it will empty the current process instead of previous
+    const prevProcess = arrayFFmpegProcess[0];
+    if (prevProcess) {
+      prevProcess.kill();
+      try {
+        await exec(
+          `kill -9 $(ps -f -C ffmpeg | grep ${prevProcess.pid} | awk '{print $2}')`
+        );
+      } catch (error) {
+        console.log("kill ffmpeg err: ", error);
+      }
+
+      arrayFFmpegProcess.shift();
     }
   });
 
-  await handleLoadModels(); // get detect model function
-
   const videoUrl = "https://cdn.shinobi.video/videos/theif4.mp4";
-  // const streamUrl =
-  //   "http://192.168.100.252:8989/get-stream/cWEtc2l0ZQ--/cnRzcDovL3JhcHRvcjpSYXB0b3IxMjMhQDE5Mi4xNjguMTAwLjEzMjo1NTQvY2FtL3JlYWxtb25pdG9yP2NoYW5uZWw9MSZzdWJ0eXBlPTAmdW5pY2FzdD10cnVlJnByb3RvPU9udmlm";
 
-  const rtspStreamUrl =
-    "rtsp://raptor:Raptor123!@192.168.100.181:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif";
+  let rtspStreamUrl = "";
+
+  // 0: AXIS, 1: AMCREST
+  if (config.cameraType === 0) {
+    rtspStreamUrl = `rtsp://raptor:Raptor123!@${config.IP}/axis-media/media.amp`;
+  } else {
+    rtspStreamUrl = `rtsp://raptor:Raptor123!@${config.IP}:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif`;
+  }
+  console.log(rtspStreamUrl);
+
+  if (!rtspStreamUrl) {
+    return res.json("no data");
+  }
 
   const imagesStream = new PassThrough();
-  const queue = async.queue(worker, 1);
-  processFramesFromRTSPStream(videoUrl, queue, imagesStream, res);
+  await handleLoadModels(); // get detect model function
+
+  queue = async.queue(worker, 10);
+  processFramesFromRTSPStream(rtspStreamUrl, queue, imagesStream);
 
   pipeline(imagesStream, res, (err) => {
     if (err) {

@@ -12,4 +12,10 @@ const config = {
   redFlagProducts: ["Bottle", "Tin can"],
   redFlagContainers: ["Suitcase", "Backpack", "Handbag"],
   tfjsBuild: "gpu",
+
+  cameraType: 1, // 0: AXIS, 1: AMCREST
+  IP: "192.168.100.36",
+  WEIGHT_FILE_NAME: "yolov5s.pt",
 };
+
+module.exports = config;

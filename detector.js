@@ -96,17 +96,7 @@ const handleLoadModels = async () => {
   }
 };
 
-async function raptorInference(
-  buffer,
-  {
-    width,
-    height,
-    isObjectDetectionSeparate,
-    groupKey,
-    monitorId,
-    monitorDetails,
-  }
-) {
+async function raptorInference(buffer, { width, height, groupKey, monitorId }) {
   const timeStart = new Date();
   const matrices = await detect(buffer);
   // debugLog('raw',matrices)
