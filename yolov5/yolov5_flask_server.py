@@ -16,7 +16,7 @@ pathlib.PosixPath = pathlib.WindowsPath
 parser = argparse.ArgumentParser()
 parser.add_argument('--port', type=int, default=8989, help='port number')
 parser.add_argument('--weights', type=str, default='weights/yolov5s.pt', help='model path')
-parser.add_argument('--device', default='0', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
+parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
 parser.add_argument('--imgszw', type=int, default=640, help='inference width (pixels)')
 parser.add_argument('--imgszh', type=int, default=480, help='inference height (pixels)')
 parser.add_argument('--conf-thres', type=float, default=0.6, help='confidence threshold')
@@ -29,6 +29,8 @@ parser.add_argument('--datayaml', type=str, default='data/coco128.yaml', help='d
 args = parser.parse_args()
 
 app = Flask(__name__)
+
+print(torch.cuda.is_available())
 
 # Load class names
 with open(args.classes_file, 'r') as f:
@@ -113,6 +115,6 @@ if __name__ == '__main__':
     log.setLevel(logging.ERROR)
     app.run(host='127.0.0.1', port=args.port)  # Start the Flask server
 
-# python yolov5/yolov5_flask_server.py --port 8989 --weights ./weights/yolov5s.pt
+# python3 yolov5/yolov5_flask_server.py --port 8989 --weights ./weights/yolov5s.pt
 
 # python ./detect.py --weights ./weights/yolov5s.pt --source http://192.168.100.252:8989/get-stream/cWEtc2l0ZQ--/cnRzcDovL3JhcHRvcjpSYXB0b3IxMjMhQDE5Mi4xNjguMTAwLjEzMjo1NTQvY2FtL3JlYWxtb25pdG9yP2NoYW5uZWw9MSZzdWJ0eXBlPTAmdW5pY2FzdD10cnVlJnByb3RvPU9udmlm
