@@ -230,7 +230,7 @@ app.get(`/get-stream`, async (req, res) => {
   const imagesStream = new PassThrough();
   await handleLoadModels(); // get detect model function
 
-  queue = async.queue(worker, 10);
+  queue = async.queue(worker, 1);
   processFramesFromRTSPStream(rtspStreamUrl, queue, imagesStream);
 
   pipeline(imagesStream, res, (err) => {
