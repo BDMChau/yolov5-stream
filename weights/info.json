@@ -1,26 +1,24 @@
 {
-   "exp": "exp7",
+   "exp": "exp39",
    "imageCount": {
       "/home/raptor-ai-flame/Flame/datasets/images": 0,
-      "/home/raptor-ai-flame/Flame/datasets/images/Book": 2446,
-      "/home/raptor-ai-flame/Flame/datasets/images/Box": 2211,
-      "/home/raptor-ai-flame/Flame/datasets/images/Person": 1690
+      "/home/raptor-ai-flame/Flame/datasets/images/bag": 2655,
+      "/home/raptor-ai-flame/Flame/datasets/images/bottle": 1672,
+      "/home/raptor-ai-flame/Flame/datasets/images/person": 349
    },
    "target": "train",
    "data": {
       "classes": [
-         "Person",
-         "Book",
-         "Box"
+         "bag",
+         "bottle",
+         "person"
       ],
-      "relationships": [],
-      "datasetDir": "openImagesData",
-      "weights": "weights/yolov5m.pt",
+      "weights": "weights/yolov5l.pt",
       "imgSize": 640,
-      "batchSize": "32",
-      "epochs": "38",
-      "device": "",
-      "trainArgs": "yolov5/train.py --img 640 --batch 32 --epochs 38 --data /home/raptor-ai-flame/Flame/datasets/dataset.yaml --weights weights/yolov5m.pt --device "
+      "batchSize": "16",
+      "epochs": "400",
+      "device": "0",
+      "trainArgs": "yolov5/train.py --img 640 --batch 16 --epochs 400 --data /home/raptor-ai-flame/Flame/datasets/dataset.yaml --weights weights/yolov5l.pt --device 0"
    },
-   "datasetYaml": "path: /home/raptor-ai-flame/Flame/datasets\ntrain: images\nval: images\n\nnames:\n  0: Person\n  1: Book\n  2: Box\n"
+   "datasetYaml": "path: /home/raptor-ai-flame/Flame/datasets\ntrain: images\nval: images\n\nnames:\n  0: bag\n  1: bottle\n  2: person\n"
 }

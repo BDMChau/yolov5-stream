@@ -115,8 +115,8 @@ if __name__ == '__main__':
     log.setLevel(logging.ERROR)
     app.run(host='127.0.0.1', port=args.port)  # Start the Flask server
 
-# python3 yolov5/yolov5_flask_server.py --port 8989 --weights ./weights/yolov5-vip.pt
+# python3 yolov5/yolov5_flask_server.py --port 8900 --weights ./weights/yolov5s.pt
 
-# python3 ./detect.py --weights weights/yolov5s.pt --source http://192.168.100.252:8989/get-stream/cWEtc2l0ZQ--/cnRzcDovL3JhcHRvcjpSYXB0b3IxMjMhQDE5Mi4xNjguMTAwLjEzMjo1NTQvY2FtL3JlYWxtb25pdG9yP2NoYW5uZWw9MSZzdWJ0eXBlPTAmdW5pY2FzdD10cnVlJnByb3RvPU9udmlm
+# python3 ./detect.py --weights ../weights/yolov5s.pt --source http://192.168.100.252:8989/get-stream/cWEtc2l0ZQ--/cnRzcDovL3JhcHRvcjpSYXB0b3IxMjMhQDE5Mi4xNjguMTAwLjEzMjo1NTQvY2FtL3JlYWxtb25pdG9yP2NoYW5uZWw9MSZzdWJ0eXBlPTAmdW5pY2FzdD10cnVlJnByb3RvPU9udmlm
 
-# python3 ./detect.py --weights weights/yolov5s.pt --source http://192.168.100.252:8989/get-stream/cWEtc2l0ZQ--/cnRzcDovL3JhcHRvcjpSYXB0b3IxMjMhQDE5Mi4xNjguMTAwLjM2OjU1NC9jYW0vcmVhbG1vbml0b3I_Y2hhbm5lbD0xJnN1YnR5cGU9MCZ1bmljYXN0PXRydWUmcHJvdG89T252aWY-
+# python3 ./detect.py --weights ../weights/yolov5s.pt --source 'rtsp://raptor:Raptor123!@192.168.100.36:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif'

@@ -14,7 +14,7 @@ const config = {
   tfjsBuild: "gpu",
 
   cameraType: 1, // 0: AXIS, 1: AMCREST
-  IP: "192.168.100.36",
+  IP: "192.168.100.111",
   WEIGHT_FILE_NAME: "yolov5s.pt",
 };
 
