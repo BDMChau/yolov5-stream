@@ -14,8 +14,8 @@ const arrayFFmpegProcess = [];
 const configRatio = {
   originalWidth: 640,
   originalHeight: 480,
-  detectWidth: 640,
-  detectHeight: 480,
+  resizeWidth: 1280,
+  resizeHeight: 768,
 };
 
 const PORT = 5000;
@@ -25,19 +25,6 @@ httpServer.listen({ port: PORT });
 console.log(`AiT Camera Stream Server running at http://localhost:${PORT}/`);
 
 const processFramesFromRTSPStream = async (url, queue, imagesStream) => {
-  // ffmpegProcess = spawn("ffmpeg", [
-  //   "-re",
-  //   "-i",
-  //   url,
-  //   "-vf",
-  //   "scale=640:480,fps=5",
-  //   "-c:v",
-  //   "mjpeg",
-  //   "-f",
-  //   "image2pipe",
-  //   "-",
-  // ]);
-
   const ffmpegProcess = spawn("ffmpeg", [
     "-re",
     "-rtsp_transport",
@@ -47,7 +34,7 @@ const processFramesFromRTSPStream = async (url, queue, imagesStream) => {
     "-f",
     "image2pipe",
     "-q:v",
-    "10",
+    "3",
     "-vf",
     `scale=${configRatio.originalWidth}:${configRatio.originalHeight},fps=6`,
     "-c:v",
@@ -59,38 +46,8 @@ const processFramesFromRTSPStream = async (url, queue, imagesStream) => {
   ffmpegProcess.stdout.on("data", async (chunk) => {
     console.log("chunk", chunk);
 
-    // const frameFileName = `imgs/frame_${Date.now()}.jpg`;
-    // fs.writeFileSync(frameFileName, chunk);
-
-    handleDataForDetecting(queue, imagesStream, chunk);
-  });
-
-  ffmpegProcess.on("close", (code) => {
-    if (code !== 0) {
-      console.log("ffmpeg exited with code", code);
-    }
-  });
-};
-
-const handleDataForDetecting = (queue, imagesStream, originalChunk) => {
-  const ffmpegProcessOutput = spawn("ffmpeg", [
-    "-i",
-    "-",
-    "-vf",
-    `scale=${configRatio.detectWidth}:${configRatio.detectHeight}`,
-    "-f",
-    "image2pipe",
-    "-c:v",
-    "mjpeg",
-    "-",
-  ]);
-  ffmpegProcessOutput.stdin.write(originalChunk);
-  ffmpegProcessOutput.stdin.end();
-
-  ffmpegProcessOutput.stdout.on("data", (chunk) => {
     const task = {
       frameBuffer: chunk,
-      originalChunk: originalChunk,
       detectOptions: {
         isObjectDetectionSeparate: false,
       },
@@ -98,14 +55,21 @@ const handleDataForDetecting = (queue, imagesStream, originalChunk) => {
 
     queue.push({
       task,
-      callback: (imgBuffer) => {
-        handleCallback(imgBuffer, imagesStream);
-      },
+      imagesStream,
     });
+  });
+
+  ffmpegProcess.stderr.on("data", (data) => {
+    console.log("ffmpeg stderr:", data.toString());
+  });
+  ffmpegProcess.on("close", (code) => {
+    if (code !== 0) {
+      console.log("ffmpeg exited with code", code);
+    }
   });
 };
 
-const handleCallback = async (imgResult, imagesStream) => {
+const handleImageResult = async (imgResult, imagesStream) => {
   const ffmpegProcessOutput = spawn("ffmpeg", [
     "-i",
     "-",
@@ -125,7 +89,7 @@ const handleCallback = async (imgResult, imagesStream) => {
   });
 };
 
-const worker = async ({ task, callback }) => {
+const worker = async ({ task, imagesStream }) => {
   const currentTime = new Date().getTime();
 
   let detectResponse = [];
@@ -143,7 +107,7 @@ const worker = async ({ task, callback }) => {
     const ratioWidth = configRatio.originalWidth / configRatio.detectWidth;
     const ratioHeight = configRatio.originalHeight / configRatio.detectHeight;
 
-    const img = await loadImage(task.originalChunk);
+    const img = await loadImage(task.frameBuffer);
     const canvas = createCanvas(img.width, img.height);
     const ctx = canvas.getContext("2d");
     ctx.drawImage(img, 0, 0, img.width, img.height);
@@ -178,7 +142,7 @@ const worker = async ({ task, callback }) => {
     // const frameFileName = `imgs/frame_${currentTime}.jpg`;
     // fs.writeFileSync(frameFileName, imageBufferResult);
 
-    callback?.(imgResult);
+    handleImageResult(imgResult, imagesStream);
   } catch (error) {
     console.log("canvas err", error);
   }
