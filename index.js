@@ -8,14 +8,15 @@ const exec = util.promisify(require("child_process").exec);
 const http = require("http");
 const { spawn } = require("child_process");
 const config = require("./config");
+const sharp = require("sharp");
 
 const arrayFFmpegProcess = [];
 
 const configRatio = {
   originalWidth: 640,
   originalHeight: 480,
-  resizeWidth: 1280,
-  resizeHeight: 768,
+  resizeWidth: 640,
+  resizeHeight: 480,
 };
 
 const PORT = 5000;
@@ -27,24 +28,39 @@ console.log(`AiT Camera Stream Server running at http://localhost:${PORT}/`);
 const processFramesFromRTSPStream = async (url, queue, imagesStream) => {
   const ffmpegProcess = spawn("ffmpeg", [
     "-re",
-    "-rtsp_transport",
-    "tcp",
     "-i",
     url,
     "-f",
     "image2pipe",
     "-q:v",
-    "3",
+    "10",
     "-vf",
     `scale=${configRatio.originalWidth}:${configRatio.originalHeight},fps=6`,
     "-c:v",
     "mjpeg",
     "-",
   ]);
+
+  // const ffmpegProcess = spawn("ffmpeg", [
+  //   "-re",
+  //   "-rtsp_transport",
+  //   "tcp",
+  //   "-i",
+  //   url,
+  //   "-f",
+  //   "image2pipe",
+  //   "-q:v",
+  //   "3",
+  //   "-vf",
+  //   `scale=${configRatio.originalWidth}:${configRatio.originalHeight},fps=6`,
+  //   "-c:v",
+  //   "mjpeg",
+  //   "-",
+  // ]);
   arrayFFmpegProcess.push(ffmpegProcess);
 
   ffmpegProcess.stdout.on("data", async (chunk) => {
-    console.log("chunk", chunk);
+    // if (!resizedBuffer) return;
 
     const task = {
       frameBuffer: chunk,
@@ -104,8 +120,8 @@ const worker = async ({ task, imagesStream }) => {
 
   // Load the image from buffer
   try {
-    const ratioWidth = configRatio.originalWidth / configRatio.detectWidth;
-    const ratioHeight = configRatio.originalHeight / configRatio.detectHeight;
+    const ratioWidth = configRatio.originalWidth / configRatio.resizeWidth;
+    const ratioHeight = configRatio.originalHeight / configRatio.resizeHeight;
 
     const img = await loadImage(task.frameBuffer);
     const canvas = createCanvas(img.width, img.height);
@@ -114,6 +130,8 @@ const worker = async ({ task, imagesStream }) => {
 
     for (let i = 0; i < detectResponse.length; i++) {
       const { confidence, width, height, x, y, tag } = detectResponse[i];
+
+      // if (tag === "null") continue;
 
       // Draw the box
       ctx.strokeStyle = "blue";
@@ -175,7 +193,8 @@ app.get(`/get-stream`, async (req, res) => {
     }
   });
 
-  const videoUrl = "https://cdn.shinobi.video/videos/theif4.mp4";
+  const videoUrl = "./vid2.mp4";
+  // const videoUrl = "https://cdn.shinobi.video/videos/theif4.mp4";
 
   let rtspStreamUrl = "";
 
@@ -195,7 +214,7 @@ app.get(`/get-stream`, async (req, res) => {
   await handleLoadModels(); // get detect model function
 
   queue = async.queue(worker, 1);
-  processFramesFromRTSPStream(rtspStreamUrl, queue, imagesStream);
+  processFramesFromRTSPStream(videoUrl, queue, imagesStream);
 
   pipeline(imagesStream, res, (err) => {
     if (err) {

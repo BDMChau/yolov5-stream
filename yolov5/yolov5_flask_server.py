@@ -24,7 +24,7 @@ parser.add_argument('--iou-thres', type=float, default=0.45, help='NMS IoU thres
 parser.add_argument('--classes', nargs='+', type=int, help='filter by class')
 parser.add_argument('--agnostic-nms', action='store_true', help='class-agnostic NMS')
 parser.add_argument('--max-det', type=int, default=1000, help='maximum detections per image')
-parser.add_argument('--classes-file', type=str, default='weights/classes.txt', help='Path to classes.txt file')
+parser.add_argument('--classes-file', type=str, default='yolov5/weights/classes.txt', help='Path to classes.txt file')
 parser.add_argument('--datayaml', type=str, default='data/coco128.yaml', help='dataset.yaml path')
 args = parser.parse_args()
 
@@ -32,9 +32,7 @@ app = Flask(__name__)
 
 print(torch.cuda.is_available())
 
-# Load class names
-with open(args.classes_file, 'r') as f:
-    names = [line.strip() for line in f.readlines()]
+
 
 # Load the model
 device = select_device(args.device)
@@ -42,6 +40,10 @@ model = DetectMultiBackend(args.weights, device=device, dnn=False, data=args.dat
 stride, names, pt = model.stride, model.names, model.pt
 imgsz = (args.imgszw, args.imgszh)
 imgsz = check_img_size(imgsz, s=stride)
+
+# Load class names
+# with open(args.classes_file, 'r') as f:
+#     names = [line.strip() for line in f.readlines()]
 
 @app.route('/detect', methods=['POST'])
 @smart_inference_mode()
@@ -115,7 +117,7 @@ if __name__ == '__main__':
     log.setLevel(logging.ERROR)
     app.run(host='127.0.0.1', port=args.port)  # Start the Flask server
 
-# python3 yolov5/yolov5_flask_server.py --port 8900 --weights ./weights/yolov5s.pt
+# python yolov5/yolov5_flask_server.py --port 8900 --weights ./weights/yolov5s.pt
 
 # python3 ./detect.py --weights ../weights/yolov5s.pt --source http://192.168.100.252:8989/get-stream/cWEtc2l0ZQ--/cnRzcDovL3JhcHRvcjpSYXB0b3IxMjMhQDE5Mi4xNjguMTAwLjEzMjo1NTQvY2FtL3JlYWxtb25pdG9yP2NoYW5uZWw9MSZzdWJ0eXBlPTAmdW5pY2FzdD10cnVlJnByb3RvPU9udmlm
 
