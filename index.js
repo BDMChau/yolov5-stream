@@ -1,6 +1,6 @@
 const express = require("express");
 const async = require("async");
-const { raptorInference, handleLoadModels } = require("./detector");
+const { raptorInference, handleLoadModels } = require("./lib/detector");
 const { createCanvas, loadImage } = require("canvas");
 const { pipeline, PassThrough } = require("stream");
 const util = require("util");
