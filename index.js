@@ -12,8 +12,8 @@ const config = require("./config");
 const arrayFFmpegProcess = [];
 
 const configRatio = {
-  originalWidth: 1024,
-  originalHeight: 768,
+  originalWidth: 640,
+  originalHeight: 480,
   detectWidth: 640,
   detectHeight: 480,
 };
