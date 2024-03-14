@@ -14,11 +14,11 @@ const arrayFFmpegProcess = [];
 const configRatio = {
   originalWidth: 640,
   originalHeight: 480,
-  resizeWidth: 1280,
-  resizeHeight: 768,
+  resizeWidth: 640,
+  resizeHeight: 480,
 };
 
-const PORT = 5000;
+const PORT = 5001;
 const app = express();
 const httpServer = http.createServer(app);
 httpServer.listen({ port: PORT });
@@ -34,7 +34,7 @@ const processFramesFromRTSPStream = async (url, queue, imagesStream) => {
     "-f",
     "image2pipe",
     "-q:v",
-    "3",
+    "8",
     "-vf",
     `scale=${configRatio.originalWidth}:${configRatio.originalHeight},fps=6`,
     "-c:v",
@@ -44,7 +44,7 @@ const processFramesFromRTSPStream = async (url, queue, imagesStream) => {
   arrayFFmpegProcess.push(ffmpegProcess);
 
   ffmpegProcess.stdout.on("data", async (chunk) => {
-    console.log("chunk", chunk);
+    // console.log("chunk", chunk);
 
     const task = {
       frameBuffer: chunk,
@@ -104,8 +104,8 @@ const worker = async ({ task, imagesStream }) => {
 
   // Load the image from buffer
   try {
-    const ratioWidth = configRatio.originalWidth / configRatio.detectWidth;
-    const ratioHeight = configRatio.originalHeight / configRatio.detectHeight;
+    const ratioWidth = configRatio.originalWidth / configRatio.resizeWidth;
+    const ratioHeight = configRatio.originalHeight / configRatio.resizeHeight;
 
     const img = await loadImage(task.frameBuffer);
     const canvas = createCanvas(img.width, img.height);
@@ -113,7 +113,10 @@ const worker = async ({ task, imagesStream }) => {
     ctx.drawImage(img, 0, 0, img.width, img.height);
 
     for (let i = 0; i < detectResponse.length; i++) {
-      const { confidence, width, height, x, y, tag } = detectResponse[i];
+      const { confidence, width, height, x, y, tag, points } =
+        detectResponse[i];
+
+      console.log("detectResponse", tag, confidence);
 
       // Draw the box
       ctx.strokeStyle = "blue";
@@ -135,6 +138,16 @@ const worker = async ({ task, imagesStream }) => {
         x * ratioWidth,
         y * ratioHeight - 5
       );
+
+      if (points?.length > 0) {
+        for (let i = 0; i < points.length; i++) {
+          const { index, x, y } = points[i];
+
+          ctx.font = "16px Arial";
+          ctx.fillStyle = "red";
+          ctx.fillText(index, x * ratioWidth, y * ratioHeight);
+        }
+      }
     }
 
     // Save the result image
