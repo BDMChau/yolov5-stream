@@ -99,10 +99,15 @@ def video_detection(path_x):
     # out=cv2.VideoWriter('output.avi', cv2.VideoWriter_fourcc('M', 'J', 'P','G'), 10, (frame_width, frame_height))
 
     model = YOLO("./weights/yolov8n-pose.pt")
+    model2 = YOLO("./weights/yolov8n-oiv7.pt")
     while True:
         success, img = cap.read()
         results = model(img, stream=True)
-        detections = []
+        results2 = model2(img, stream=True)
+
+        for r in results2:
+            print(r.boxes)
+
         for r in results:
             index = 0
             names = r.names
@@ -111,7 +116,6 @@ def video_detection(path_x):
             keypointsRawData = r.keypoints.data
 
             for box in boxes:
-                print("r", r)
                 x1, y1, x2, y2 = box.xyxy[0]
                 x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
                 # print(x1,y1,x2,y2)
