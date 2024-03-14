@@ -5,7 +5,7 @@ from flask import jsonify
 from ultralytics.utils.ops import xyxy2xywh
 import torch
 
-modelDefault = YOLO("./yolov8n-pose.pt")
+modelDefault = YOLO("./weights/yolov8n-pose.pt")
 classNames = [
     "person",
     "bicycle",
@@ -98,7 +98,7 @@ def video_detection(path_x):
     frame_height = int(cap.get(4))
     # out=cv2.VideoWriter('output.avi', cv2.VideoWriter_fourcc('M', 'J', 'P','G'), 10, (frame_width, frame_height))
 
-    model = YOLO("./yolov8n-pose.pt")
+    model = YOLO("./weights/yolov8n-pose.pt")
     while True:
         success, img = cap.read()
         results = model(img, stream=True)

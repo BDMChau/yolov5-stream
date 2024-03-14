@@ -42,7 +42,7 @@ def generate_frames(path_x=""):
 @app.route("/video")
 def video():
     return Response(
-        generate_frames(path_x="drinking-man.mp4"),
+        generate_frames(path_x="./data/drinking-man.mp4"),
         mimetype="multipart/x-mixed-replace; boundary=frame",
     )
 
