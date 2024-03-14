@@ -105,20 +105,20 @@ def video_detection(path_x):
         detections = []
         for r in results:
             index = 0
-            detections = []
-
+            names = r.names
             boxes = r.boxes
             # keypoints = r.keypoints.data[0]
             keypointsRawData = r.keypoints.data
 
             for box in boxes:
+                print("r", r)
                 x1, y1, x2, y2 = box.xyxy[0]
                 x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
                 # print(x1,y1,x2,y2)
                 cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 3)
                 conf = box.conf[0]
                 cls = int(box.cls[0])
-                class_name = classNames[cls]
+                class_name = names[cls]
                 label = f"{class_name}{conf}"
                 t_size = cv2.getTextSize(label, 0, fontScale=1, thickness=1)[0]
                 # print(t_size)
@@ -143,18 +143,6 @@ def video_detection(path_x):
                 myX, myY, w, h = xywh
                 myX = myX - (w / 2)  # Calculate top left x
                 myY = myY - (h / 2)  # Calculate top left y
-
-                detections.insert(
-                    index,
-                    {
-                        "tag": class_name,
-                        "confidence": float(conf),
-                        "x": myX,
-                        "y": myY,
-                        "width": w,
-                        "height": h,
-                    },
-                )
 
             points = []
             for keypointRawData in keypointsRawData:
@@ -181,9 +169,6 @@ def video_detection(path_x):
                         1,
                     )
 
-            detections[index]["points"] = points
-
-        print("==========", detections)
         yield img
 
 
@@ -197,13 +182,14 @@ def handleDetect(img):
         index = 0
         detections = []
 
+        names = r.names
         boxes = r.boxes
         keypointsRawData = r.keypoints.data
 
         for box in boxes:
             conf = box.conf[0]
             cls = int(box.cls[0])
-            label = classNames[cls]
+            label = names[cls]
             xywh = (xyxy2xywh(torch.tensor(box.xyxy[0]).view(1, 4))).view(-1).tolist()
             x, y, w, h = xywh
             x = x - (w / 2)  # Calculate top left x
