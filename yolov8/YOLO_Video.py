@@ -3,7 +3,9 @@ import cv2
 import math
 from flask import jsonify
 from ultralytics.utils.ops import xyxy2xywh
+from ultralytics.nn.tasks import Ensemble
 import torch
+import yaml
 
 modelDefault = YOLO("./weights/yolov8n-pose.pt")
 classNames = [
@@ -90,6 +92,16 @@ classNames = [
 ]
 
 
+classNamesOpenImageV7 = []
+with open("./weights/OpenImagesV7.yaml", "r", encoding="utf-8") as f:
+    data = yaml.load(f, Loader=yaml.SafeLoader)
+    classNamesOpenImageV7 = [data["names"][i] for i in sorted(data["names"])]
+
+
+modelPersonPose = YOLO("./weights/yolov8n-pose.pt")
+modelObjectDetection = YOLO("./weights/yolov8x-oiv7.pt")
+
+
 def video_detection(path_x):
     video_capture = path_x
     # Create a Webcam Object
@@ -98,21 +110,49 @@ def video_detection(path_x):
     frame_height = int(cap.get(4))
     # out=cv2.VideoWriter('output.avi', cv2.VideoWriter_fourcc('M', 'J', 'P','G'), 10, (frame_width, frame_height))
 
-    model = YOLO("./weights/yolov8n-pose.pt")
-    model2 = YOLO("./weights/yolov8n-oiv7.pt")
     while True:
         success, img = cap.read()
-        results = model(img, stream=True)
-        results2 = model2(img, stream=True)
+        results = modelPersonPose(img, stream=True)
+        results2 = modelObjectDetection(img, stream=True)
 
         for r in results2:
-            print(r.boxes)
+            # print(r.boxes)
+            box = r.boxes
+            for i, xyxy in enumerate(box.xyxy):
+                x1, y1, x2, y2 = xyxy
+                x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+                # print(xyxy)
+                conf = box.conf[i]
+                cls = int(box.cls[i])
+                class_name = classNamesOpenImageV7[cls]
+
+                # if class_name != "Bottle" and class_name != "Wine":
+                #     continue
+
+                label = f"{class_name}"
+                t_size = cv2.getTextSize(label, 0, fontScale=1, thickness=1)[0]
+
+                c2 = x1 + t_size[0], y1 - t_size[1] - 3
+
+                cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 3)
+                cv2.rectangle(
+                    img, (x1, y1), c2, [255, 0, 255], -1, cv2.LINE_AA
+                )  # filled
+                cv2.putText(
+                    img,
+                    label,
+                    (x1, y1 - 2),
+                    0,
+                    1,
+                    [255, 255, 255],
+                    thickness=1,
+                    lineType=cv2.LINE_AA,
+                )
 
         for r in results:
             index = 0
             names = r.names
             boxes = r.boxes
-            # keypoints = r.keypoints.data[0]
             keypointsRawData = r.keypoints.data
 
             for box in boxes:
@@ -123,7 +163,7 @@ def video_detection(path_x):
                 conf = box.conf[0]
                 cls = int(box.cls[0])
                 class_name = names[cls]
-                label = f"{class_name}{conf}"
+                label = f"{class_name}"
                 t_size = cv2.getTextSize(label, 0, fontScale=1, thickness=1)[0]
                 # print(t_size)
                 c2 = x1 + t_size[0], y1 - t_size[1] - 3
