@@ -6,12 +6,11 @@ from keras.models import Sequential
 
 from sklearn.model_selection import train_test_split
 
-# Đọc dữ liệu
 theft01_dataFrame = pd.read_csv("./files/theft01.txt")
 
 X = []
 y = []
-time_steps = 50
+time_steps = 20
 
 dataset = theft01_dataFrame.iloc[:, 1:].values
 n_sample = len(dataset)
@@ -25,6 +24,7 @@ print(X.shape, y.shape)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
 model = Sequential()
+
 model.add(LSTM(units=50, return_sequences=True, input_shape=(X.shape[1], X.shape[2])))
 model.add(Dropout(0.2))
 model.add(LSTM(units=50, return_sequences=True))
@@ -33,7 +33,11 @@ model.add(LSTM(units=50, return_sequences=True))
 model.add(Dropout(0.2))
 model.add(LSTM(units=50))
 model.add(Dropout(0.2))
+
+# if >=3 classes, use activation="softmax" and units = >=3
 model.add(Dense(units=1, activation="sigmoid"))
+
+# loss="categorical_crossentropy" for multiple
 model.compile(optimizer="adam", metrics=["accuracy"], loss="binary_crossentropy")
 
 model.fit(X_train, y_train, epochs=16, batch_size=32, validation_data=(X_test, y_test))

@@ -1,0 +1,6 @@
+ultralytics
+mediapipe
+pandas
+opencv-python
+tensorflow
+scikit-learn

@@ -18,7 +18,7 @@ modelPersonPose = YOLO("./weights/yolov8s-pose.pt").to(device)
 def make_data_from_video():
     data_to_write = []
 
-    cap = cv2.VideoCapture(parent_dir + "/data/drinking-man.mp4")
+    cap = cv2.VideoCapture(parent_dir + "/data/only_drinking.mp4")
 
     while cap.isOpened():
         ret, img = cap.read()
@@ -38,8 +38,6 @@ def make_data_from_video():
 
             names = r.names
             boxes = r.boxes
-            keypointRawData = r.keypoints.data[0]
-
             for box in boxes:
                 x1, y1, x2, y2 = box.xyxy[0]
                 x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
@@ -63,18 +61,13 @@ def make_data_from_video():
                     lineType=cv2.LINE_AA,
                 )
 
-            result_timestep = []
-            for i, keypoint_tensor in enumerate(keypointRawData):
+            # POSE
+            keypoints_xy = r.keypoints.xy[0]
+            for i, keypoint_tensor in enumerate(keypoints_xy):
                 x, y = (
                     int(keypoint_tensor[0].item()),
                     int(keypoint_tensor[1].item()),
                 )
-
-                # print(keypoint_data)
-
-                if x and y:
-                    result_timestep.append(x)
-                    result_timestep.append(y)
 
                 cv2.putText(
                     img,
@@ -85,6 +78,17 @@ def make_data_from_video():
                     (0, 255, 0),
                     1,
                 )
+
+            keypoints_xyn = r.keypoints.xyn[0]
+            result_timestep = []
+            for i, keypoint_tensor in enumerate(keypoints_xyn):
+                x, y = (
+                    keypoint_tensor[0].item(),
+                    keypoint_tensor[1].item(),
+                )
+
+                result_timestep.append(x)
+                result_timestep.append(y)
 
             print(result_timestep)
             data_to_write.append(result_timestep)
