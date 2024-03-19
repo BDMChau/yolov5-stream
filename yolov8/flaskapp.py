@@ -42,13 +42,13 @@ def generate_frames(path_x=""):
 @app.route("/video")
 def video():
     return Response(
-        generate_frames(path_x="./data/vid2.mp4"),
+        generate_frames(path_x="./data/wine2.mp4"),
         # generate_frames(path_x="https://cdn.shinobi.video/videos/theif4.mp4"),
         mimetype="multipart/x-mixed-replace; boundary=frame",
     )
 
 
-@app.route("/detect-image")
+@app.route("/image")
 def detectImage():
     return Response(
         generate_frames(path_x="pose.jpg"),
@@ -56,7 +56,7 @@ def detectImage():
     )
 
 
-@app.route("/get-stream")
+@app.route("/stream")
 def stream():
     # url = "rtsp://raptor:Raptor123!@192.168.100.36:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif"
     url = "http://192.168.100.252:8989/get-stream/ZGV2LXJhcHRvci1haQ--/cnRzcDovL3JhcHRvcjpSYXB0b3IxMjMhQDE5Mi4xNjguMTAwLjM2OjU1NC9jYW0vcmVhbG1vbml0b3I_Y2hhbm5lbD0xJnN1YnR5cGU9MCZ1bmljYXN0PXRydWUmcHJvdG89T252aWY-"
