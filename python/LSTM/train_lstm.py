@@ -10,7 +10,7 @@ theft01_dataFrame = pd.read_csv("./files/theft01.txt")
 
 X = []
 y = []
-time_steps = 20
+time_steps = 10
 
 dataset = theft01_dataFrame.iloc[:, 1:].values
 n_sample = len(dataset)
@@ -19,7 +19,6 @@ for i in range(time_steps, n_sample):
     y.append(1)
 
 X, y = np.array(X), np.array(y)
-print(X.shape, y.shape)
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
