@@ -107,7 +107,7 @@ modelObjectDetection = YOLO("./weights/yolov8x.pt").to(device)
 
 lstm_model = tensorflow.keras.models.load_model("./LSTM/results/lstm01.keras")
 
-time_steps = 15
+time_steps = 10
 
 
 def video_detection(path_x):
@@ -244,24 +244,23 @@ def video_detection(path_x):
                 items_ltsm.append(x)
                 items_ltsm.append(y)
 
-                time_steps_ltsm.append(items_ltsm)
-                if len(time_steps_ltsm) == time_steps:
-                    result_queue = queue.Queue()
-                    lstmDetect_thread = threading.Thread(
-                        target=lstmDetect,
-                        args=(
-                            lstm_model,
-                            time_steps_ltsm,
-                            result_queue,
-                        ),
-                    )
-                    lstmDetect_thread.start()
+            time_steps_ltsm.append(items_ltsm)
+            if len(time_steps_ltsm) == time_steps:
+                result_queue = queue.Queue()
+                lstmDetect_thread = threading.Thread(
+                    target=lstmDetect,
+                    args=(
+                        lstm_model,
+                        time_steps_ltsm,
+                        result_queue,
+                    ),
+                )
+                lstmDetect_thread.start()
 
-                    lstmDetect_thread.join()
-                    lstm_label = result_queue.get()
+                lstmDetect_thread.join()
+                lstm_label = result_queue.get()
 
-                    time_steps_ltsm = []
-                    items_ltsm = []
+                time_steps_ltsm = []
 
                 print("lstm_label lstm_label:", lstm_label)
 
@@ -271,13 +270,11 @@ def video_detection(path_x):
 
 
 def lstmDetect(model, lm_list, result_queue):
-    print("results=============:", lm_list)
-
     lm_list = np.array(lm_list)
     lm_list = np.expand_dims(lm_list, axis=0)
     # print("lm_list.shapelm_list.shape", lm_list.shape)
     results = model.predict(lm_list)
-    print("results=============:", results)
+
     if results[0][0] > 0.5:
         result_queue.put("UONG NUOC")
     else:
