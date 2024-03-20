@@ -287,10 +287,14 @@ def lstmDetect(model, lm_list, result_queue):
     # print("lm_list.shapelm_list.shape", lm_list.shape)
     results = model.predict(lm_list)
     print("results=======", results)
-    if results[0][0] > 0.5:
-        result_queue.put("UONG NUOC")
-    else:
-        result_queue.put("KO UONG NUOC")
+    predicted_class_index = np.argmax(results)
+    
+    print("predicted_class_index=======", predicted_class_index)
+
+    class_labels = ["UONG NUOC", "OTHER_CLASS", "OTHER_CLASS"]
+
+    predicted_class_label = class_labels[predicted_class_index]
+    result_queue.put(predicted_class_label)
 
 
 def draw_label_on_image(label, img):

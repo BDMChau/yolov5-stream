@@ -98,7 +98,7 @@ def make_data_from_video():
 
     # save to txt file
     print("Writing file...")
-    file_name = "standing"
+    file_name = "drinking"
     df = pd.DataFrame(data_to_write)
     df.to_csv("files/" + file_name + ".txt")
 
