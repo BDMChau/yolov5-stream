@@ -7,7 +7,7 @@ import math
 import yaml
 import numpy as np
 import threading
-import tensorflow
+import tensorflow as tf
 import queue
 
 modelDefault = YOLO("./weights/yolov8n-pose.pt")
@@ -100,18 +100,23 @@ with open("./yaml/OpenImagesV7.yaml", "r", encoding="utf-8") as f:
     classNamesOpenImageV7 = [data["names"][i] for i in sorted(data["names"])]
 
 device = 0 if torch.cuda.is_available() else "cpu"
-print(f"Using device: {device}")
 
+# force tensorflow use CPU
+tf.config.set_visible_devices([], "GPU")
+
+
+print(f"Using device for YOLO: {device}")
 modelPersonPose = YOLO("./weights/yolov8s-pose.pt").to(device)
 modelObjectDetection = YOLO("./weights/yolov8x.pt").to(device)
 
-lstm_model = tensorflow.keras.models.load_model("./LSTM/results/lstm01.keras")
+lstm_model = tf.keras.models.load_model("./LSTM/results/lstm01.keras")
 
 time_steps = 10
 
 
 def video_detection(path_x):
     time_steps_ltsm = []
+    lstm_label = "NOTHING"
 
     video_capture = path_x
     cap = cv2.VideoCapture(video_capture)
@@ -215,55 +220,62 @@ def video_detection(path_x):
                     lineType=cv2.LINE_AA,
                 )
 
-            keypoints_xy = r.keypoints.xy[0]
-            for i, keypoint_tensor in enumerate(keypoints_xy):
-                x, y = (
-                    int(keypoint_tensor[0].item()),
-                    int(keypoint_tensor[1].item()),
-                )
-
-                cv2.putText(
-                    img,
-                    str(i),
-                    (x, y),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    (0, 255, 0),
-                    1,
-                )
-
-            keypoints_xyn = r.keypoints.xyn[0]
-            lstm_label = "NOTHING"
             items_ltsm = []
-            for i, keypoint_tensor in enumerate(keypoints_xyn):
-                x, y = (
-                    keypoint_tensor[0].item(),
-                    keypoint_tensor[1].item(),
-                )
+            for i, keypoints_xyn in enumerate(r.keypoints.xyn):
+                keypoints_xy = r.keypoints.xy[i]
 
-                items_ltsm.append(x)
-                items_ltsm.append(y)
+                # 17 points of body
+                for j, point_xyn in enumerate(keypoints_xyn):
+                    x, y = (
+                        int(keypoints_xy[j][0].item()),
+                        int(keypoints_xy[j][1].item()),
+                    )
 
-            time_steps_ltsm.append(items_ltsm)
-            if len(time_steps_ltsm) == time_steps:
-                result_queue = queue.Queue()
-                lstmDetect_thread = threading.Thread(
-                    target=lstmDetect,
-                    args=(
-                        lstm_model,
-                        time_steps_ltsm,
-                        result_queue,
-                    ),
-                )
-                lstmDetect_thread.start()
+                    xn, yn = (
+                        point_xyn[0].item(),
+                        point_xyn[1].item(),
+                    )
 
-                lstmDetect_thread.join()
-                lstm_label = result_queue.get()
+                    items_ltsm.append([])
+                    items_ltsm[i].append(xn)
+                    items_ltsm[i].append(yn)
 
-                time_steps_ltsm = []
+                    cv2.putText(
+                        img,
+                        str(j),
+                        (x, y),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        1,
+                        (0, 255, 0),
+                        1,
+                    )
 
-                print("lstm_label lstm_label:", lstm_label)
+            for i, item_ltsm in enumerate(items_ltsm):
+                if len(item_ltsm) > 0:
+                    time_steps_ltsm.append([])
+                    time_steps_ltsm[i].append(item_ltsm)
+                    item_ltsm = []
 
+            for i, time_steps_ltsm_item in enumerate(time_steps_ltsm):
+                if len(time_steps_ltsm_item) == time_steps:
+                    result_queue = queue.Queue()
+                    lstmDetect_thread = threading.Thread(
+                        target=lstmDetect,
+                        args=(
+                            lstm_model,
+                            time_steps_ltsm_item,
+                            result_queue,
+                        ),
+                    )
+                    lstmDetect_thread.start()
+
+                    lstmDetect_thread.join()
+                    lstm_label = result_queue.get()
+
+                    time_steps_ltsm[i] = []
+
+        print("lstm_label lstm_label:", lstm_label)
+        img = draw_label_on_image(lstm_label, img)
         yield img
 
     cv2.destroyAllWindows()
@@ -274,11 +286,31 @@ def lstmDetect(model, lm_list, result_queue):
     lm_list = np.expand_dims(lm_list, axis=0)
     # print("lm_list.shapelm_list.shape", lm_list.shape)
     results = model.predict(lm_list)
-
+    print("results=======", results)
     if results[0][0] > 0.5:
         result_queue.put("UONG NUOC")
     else:
         result_queue.put("KO UONG NUOC")
+
+
+def draw_label_on_image(label, img):
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    bottomLeftCornerOfText = (10, 30)
+    fontScale = 1
+    fontColor = (0, 255, 0)
+    thickness = 2
+    lineType = 2
+    cv2.putText(
+        img,
+        label,
+        bottomLeftCornerOfText,
+        font,
+        fontScale,
+        fontColor,
+        thickness,
+        lineType,
+    )
+    return img
 
 
 def handleDetect(img):

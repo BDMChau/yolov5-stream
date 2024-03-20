@@ -18,7 +18,7 @@ modelPersonPose = YOLO("./weights/yolov8s-pose.pt").to(device)
 def make_data_from_video():
     data_to_write = []
 
-    cap = cv2.VideoCapture(parent_dir + "/data/only_drinking.mp4")
+    cap = cv2.VideoCapture(parent_dir + "/data/drinking.mp4")
 
     while cap.isOpened():
         ret, img = cap.read()
@@ -98,7 +98,7 @@ def make_data_from_video():
 
     # save to txt file
     print("Writing file...")
-    file_name = "theft01"
+    file_name = "standing"
     df = pd.DataFrame(data_to_write)
     df.to_csv("files/" + file_name + ".txt")
 

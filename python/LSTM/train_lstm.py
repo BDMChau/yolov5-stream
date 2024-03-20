@@ -6,17 +6,24 @@ from keras.models import Sequential
 
 from sklearn.model_selection import train_test_split
 
-theft01_dataFrame = pd.read_csv("./files/theft01.txt")
+drinking_dataFrame = pd.read_csv("./files/drinking.txt")
+standing_dataFrame = pd.read_csv("./files/standing.txt")
 
 X = []
 y = []
 time_steps = 10
 
-dataset = theft01_dataFrame.iloc[:, 1:].values
+dataset = drinking_dataFrame.iloc[:, 1:].values
 n_sample = len(dataset)
 for i in range(time_steps, n_sample):
     X.append(dataset[i - time_steps : i, :])
     y.append(1)
+
+dataset = standing_dataFrame.iloc[:, 1:].values
+n_sample = len(dataset)
+for i in range(time_steps, n_sample):
+    X.append(dataset[i - time_steps : i, :])
+    y.append(0)
 
 X, y = np.array(X), np.array(y)
 
