@@ -116,7 +116,7 @@ modelObjectDetection = YOLO("./weights/yolov8x.pt").to(device)
 
 lstm_model = tf.keras.models.load_model("./LSTM/results/lstm01.keras")
 
-time_steps = 20
+time_steps = 10
 
 
 def video_detection(path_x):
@@ -314,8 +314,9 @@ def lstmDetect(model, lm_list, result_queue, keyId):
     results = model.predict(lm_list)
     maxValue = np.argmax(results)
 
-    class_labels = ["DRINKING", "hand swing", "PUNCH nghien", "PUNCH", "No action"]
+    class_labels = ["hand swing", "PUNCH nghien", "No action"]
 
+    print("results==========:", results)
     if maxValue < len(class_labels):
         final_result = class_labels[maxValue]
     else:

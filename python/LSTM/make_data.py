@@ -61,6 +61,7 @@ def make_data_from_video():
                     lineType=cv2.LINE_AA,
                 )
 
+            print("RRRRRR", r.keypoints)
             # POSE
             keypoints_xy = r.keypoints.xy[0]
             for i, keypoint_tensor in enumerate(keypoints_xy):
@@ -82,6 +83,7 @@ def make_data_from_video():
             keypoints_xyn = r.keypoints.xyn[0]
             result_timestep = []
             for i, keypoint_tensor in enumerate(keypoints_xyn):
+                print("keypoint_tensorkeypoint_tensor", keypoint_tensor)
                 x, y = (
                     keypoint_tensor[0].item(),
                     keypoint_tensor[1].item(),

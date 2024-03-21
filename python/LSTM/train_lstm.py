@@ -15,44 +15,33 @@ noaction_dataFrame = pd.read_csv("./files/noaction.txt")
 
 X = []
 y = []
-time_steps = 20
-
-dataset = drinking_dataFrame.iloc[:, 1:].values
-n_sample = len(dataset)
-for i in range(time_steps, n_sample):
-    X.append(dataset[i - time_steps : i, :])
-    y.append(0)
+time_steps = 10
 
 dataset = handswing_dataFrame.iloc[:, 1:].values
 n_sample = len(dataset)
 for i in range(time_steps, n_sample):
     X.append(dataset[i - time_steps : i, :])
-    y.append(1)
+    y.append(0)
 
 dataset = punchnghien_dataFrame.iloc[:, 1:].values
 n_sample = len(dataset)
 for i in range(time_steps, n_sample):
     X.append(dataset[i - time_steps : i, :])
-    y.append(2)
+    y.append(1)
 
-dataset = punch_dataFrame.iloc[:, 1:].values
-n_sample = len(dataset)
-for i in range(time_steps, n_sample):
-    X.append(dataset[i - time_steps : i, :])
-    y.append(3)
 
 dataset = noaction_dataFrame.iloc[:, 1:].values
 n_sample = len(dataset)
 for i in range(time_steps, n_sample):
     X.append(dataset[i - time_steps : i, :])
-    y.append(4)
+    y.append(2)
 
 X, y = np.array(X), np.array(y)
 print("X.shape, y.shape:", X.shape, y.shape)
 
 
 # One-hot encoding for multi-class classification
-y = to_categorical(y, num_classes=5)
+y = to_categorical(y, num_classes=3)
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
@@ -66,15 +55,11 @@ model.add(LSTM(units=100, return_sequences=True))
 model.add(Dropout(0.2))
 model.add(LSTM(units=100, return_sequences=True))
 model.add(Dropout(0.2))
-model.add(LSTM(units=100, return_sequences=True))
-model.add(Dropout(0.2))
-model.add(LSTM(units=100, return_sequences=True))
-model.add(Dropout(0.2))
 model.add(LSTM(units=100))
 model.add(Dropout(0.2))
 
 # model.add(Dense(units=1, activation="sigmoid"))
-model.add(Dense(units=5, activation="softmax"))  # for multiple
+model.add(Dense(units=3, activation="softmax"))  # for multiple
 
 
 # model.compile(optimizer="adam", metrics=["accuracy"], loss="binary_crossentropy")
