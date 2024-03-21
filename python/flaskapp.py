@@ -8,6 +8,7 @@ from YOLO_Video import video_detection, handleDetect
 
 app = Flask(__name__)
 
+
 def generate_frames(path_x=""):
     yolo_output = video_detection(path_x)
     for detection_ in yolo_output:
@@ -19,10 +20,11 @@ def generate_frames(path_x=""):
 @app.route("/video")
 def video():
     return Response(
-        generate_frames(path_x="./data/wine1.mp4"),
+        generate_frames(path_x="./data/drinking.mp4"),
         # generate_frames(path_x="https://cdn.shinobi.video/videos/theif4.mp4"),
         mimetype="multipart/x-mixed-replace; boundary=frame",
     )
+
 
 @app.route("/stream")
 def stream():
