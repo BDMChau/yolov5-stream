@@ -110,8 +110,8 @@ for gpu in gpus:
 
 
 print(f"Using device for YOLO: {device}")
-modelPersonPose = YOLO("./weights/yolov8s-pose.pt").to(device)
-modelObjectDetection = YOLO("./weights/yolov8x.pt").to(device)
+modelPersonPose = YOLO("./weights/yolov8n-pose.pt").to(device)
+modelObjectDetection = YOLO("./weights/yolov8n.pt").to(device)
 
 lstm_model = tf.keras.models.load_model("./LSTM/results/lstm01.keras")
 
@@ -169,9 +169,8 @@ def video_detection(path_x):
 
                 if (
                     True
-                    # class_name
-                    # != "bottle"
-                    # and class_name != "person"
+                    # class_name == "person"
+                    # or class_name != "bottle"
                     #     # and class_name != "Wine"
                     #     # and class_name != "Man"
                     #     # and class_name != "Woman"
@@ -229,32 +228,32 @@ def video_detection(path_x):
 
                     # cv2.circle(img, (x, y), 5, (0, 255, 0), -1)
 
-            for key, value in items_ltsm.items():
-                if len(value) > 0:
-                    if key not in time_steps_items:
-                        time_steps_items[key] = []
+            # for key, value in items_ltsm.items():
+            #     if len(value) > 0:
+            #         if key not in time_steps_items:
+            #             time_steps_items[key] = []
 
-                    time_steps_items[key].append(value)
-                    items_ltsm[key] = []
+            #         time_steps_items[key].append(value)
+            #         items_ltsm[key] = []
 
-            for key, value in time_steps_items.items():
-                if len(value) == window_size:
-                    result_queues[key] = queue.Queue()
-                    lstmDetect_thread = threading.Thread(
-                        target=lstmDetect,
-                        args=(
-                            lstm_model,
-                            value,
-                            result_queues[key],
-                        ),
-                    )
-                    lstmDetect_thread.start()
+            # for key, value in time_steps_items.items():
+            #     if len(value) == window_size:
+            #         result_queues[key] = queue.Queue()
+            #         lstmDetect_thread = threading.Thread(
+            #             target=lstmDetect,
+            #             args=(
+            #                 lstm_model,
+            #                 value,
+            #                 result_queues[key],
+            #             ),
+            #         )
+            #         lstmDetect_thread.start()
 
-                    time_steps_items[key] = []
+            #         time_steps_items[key] = []
 
-            for key, value in result_queues.items():
-                if not value.empty():
-                    lstm_labels[key] = value.get()
+            # for key, value in result_queues.items():
+            #     if not value.empty():
+            #         lstm_labels[key] = value.get()
 
             for i, box in enumerate(boxes):
                 x1, y1, x2, y2 = box.xyxy[0]
@@ -264,7 +263,7 @@ def video_detection(path_x):
                 class_name = names[class_id]
                 track_id = ids[i]
 
-                lstm_label = "Nothing"
+                lstm_label = "No action"
                 if track_id in lstm_labels:
                     lstm_label = lstm_labels[track_id]
 
@@ -273,17 +272,17 @@ def video_detection(path_x):
                 c2 = x1 + t_size[0], y1 - t_size[1] + 25
 
                 # cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 1)
-                cv2.rectangle(img, (x1, y1 + 25), c2, [255, 0, 255], -1, cv2.LINE_AA)
-                cv2.putText(
-                    img,
-                    label,
-                    (x1, y1 + 25),
-                    0,
-                    1,
-                    [255, 255, 255],
-                    thickness=1,
-                    lineType=cv2.LINE_AA,
-                )
+                # cv2.rectangle(img, (x1, y1 + 25), c2, [255, 0, 255], -1, cv2.LINE_AA)
+                # cv2.putText(
+                #     img,
+                #     label,
+                #     (x1, y1 + 25),
+                #     0,
+                #     1,
+                #     [255, 255, 255],
+                #     thickness=1,
+                #     lineType=cv2.LINE_AA,
+                # )
 
         print("lstm_labels lstm_labelsAAAAAAAA:", lstm_labels)
         scale_percent = 150
