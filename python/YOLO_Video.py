@@ -128,6 +128,8 @@ def video_detection(path_x):
 
     while cap.isOpened():
         ret, img = cap.read()
+        width = int(img.shape[1])
+        height = int(img.shape[0])
 
         if not ret:
             print("Error: Unable to read frame.")
@@ -284,13 +286,17 @@ def video_detection(path_x):
                 )
 
         print("lstm_labels lstm_labelsAAAAAAAA:", lstm_labels)
-        yield img
+        scale_percent = 150
+        resizeW = int(width * scale_percent / 100)
+        resizeH = int(height * scale_percent / 100)
+        resized_img = cv2.resize(img, (resizeW, resizeH), interpolation=cv2.INTER_AREA)
+        yield resized_img
 
 
 def lstmDetect(model, lm_list, result_queue):
-    class_labels = ["hand swing", "PUNCH nghien", "No action"]
+    class_labels = ["No action", "Picking", "Stealing"]
 
-    threshold = 0.75
+    threshold = 0.8
 
     lm_list = np.array(lm_list)
     lm_list = np.expand_dims(lm_list, axis=0)

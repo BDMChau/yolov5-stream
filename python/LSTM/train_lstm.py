@@ -12,25 +12,27 @@ handswing_dataFrame = pd.read_csv("./files/handswing.txt")
 punchnghien_dataFrame = pd.read_csv("./files/punchnghien.txt")
 punch_dataFrame = pd.read_csv("./files/punch.txt")
 noaction_dataFrame = pd.read_csv("./files/noaction.txt")
+picking_dataFrame = pd.read_csv("./files/picking.txt")
+stealing_dataFrame = pd.read_csv("./files/stealing.txt")
 
 X = []
 y = []
 window_size = 10
 
-dataset = handswing_dataFrame.iloc[:, 1:].values
+dataset = noaction_dataFrame.iloc[:, 1:].values
 n_sample = len(dataset)
 for i in range(window_size, n_sample):
     X.append(dataset[i - window_size : i, :])
     y.append(0)
 
-dataset = punchnghien_dataFrame.iloc[:, 1:].values
+dataset = picking_dataFrame.iloc[:, 1:].values
 n_sample = len(dataset)
 for i in range(window_size, n_sample):
     X.append(dataset[i - window_size : i, :])
     y.append(1)
 
 
-dataset = noaction_dataFrame.iloc[:, 1:].values
+dataset = stealing_dataFrame.iloc[:, 1:].values
 n_sample = len(dataset)
 for i in range(window_size, n_sample):
     X.append(dataset[i - window_size : i, :])
