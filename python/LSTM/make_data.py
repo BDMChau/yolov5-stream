@@ -38,6 +38,8 @@ def make_data_from_video():
 
             names = r.names
             boxes = r.boxes
+            img = r.plot(kpt_line=True, kpt_radius=6)
+
             for box in boxes:
                 x1, y1, x2, y2 = box.xyxy[0]
                 x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
@@ -61,29 +63,11 @@ def make_data_from_video():
                     lineType=cv2.LINE_AA,
                 )
 
-            print("RRRRRR", r.keypoints)
             # POSE
-            keypoints_xy = r.keypoints.xy[0]
-            for i, keypoint_tensor in enumerate(keypoints_xy):
-                x, y = (
-                    int(keypoint_tensor[0].item()),
-                    int(keypoint_tensor[1].item()),
-                )
-
-                cv2.putText(
-                    img,
-                    str(i),
-                    (x, y),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    (0, 255, 0),
-                    1,
-                )
-
-            keypoints_xyn = r.keypoints.xyn[0]
+            keypoints_xyn = r.keypoints.xyn[0]  # just get the first
             result_timestep = []
             for i, keypoint_tensor in enumerate(keypoints_xyn):
-                print("keypoint_tensorkeypoint_tensor", keypoint_tensor)
+                print("keypoint_tensor", keypoint_tensor)
                 x, y = (
                     keypoint_tensor[0].item(),
                     keypoint_tensor[1].item(),
@@ -92,7 +76,6 @@ def make_data_from_video():
                 result_timestep.append(x)
                 result_timestep.append(y)
 
-            print(result_timestep)
             data_to_write.append(result_timestep)
 
         cv2.imshow("image", img)

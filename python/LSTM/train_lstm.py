@@ -15,25 +15,25 @@ noaction_dataFrame = pd.read_csv("./files/noaction.txt")
 
 X = []
 y = []
-time_steps = 10
+window_size = 10
 
 dataset = handswing_dataFrame.iloc[:, 1:].values
 n_sample = len(dataset)
-for i in range(time_steps, n_sample):
-    X.append(dataset[i - time_steps : i, :])
+for i in range(window_size, n_sample):
+    X.append(dataset[i - window_size : i, :])
     y.append(0)
 
 dataset = punchnghien_dataFrame.iloc[:, 1:].values
 n_sample = len(dataset)
-for i in range(time_steps, n_sample):
-    X.append(dataset[i - time_steps : i, :])
+for i in range(window_size, n_sample):
+    X.append(dataset[i - window_size : i, :])
     y.append(1)
 
 
 dataset = noaction_dataFrame.iloc[:, 1:].values
 n_sample = len(dataset)
-for i in range(time_steps, n_sample):
-    X.append(dataset[i - time_steps : i, :])
+for i in range(window_size, n_sample):
+    X.append(dataset[i - window_size : i, :])
     y.append(2)
 
 X, y = np.array(X), np.array(y)
@@ -47,18 +47,19 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
 model = Sequential()
 
-model.add(LSTM(units=100, return_sequences=True, input_shape=(time_steps, X.shape[2])))
+model.add(LSTM(units=50, return_sequences=True, input_shape=(window_size, X.shape[2])))
 model.add(Dropout(0.2))
-model.add(LSTM(units=100, return_sequences=True))
+model.add(LSTM(units=50, return_sequences=True))
 model.add(Dropout(0.2))
-model.add(LSTM(units=100, return_sequences=True))
+model.add(LSTM(units=50, return_sequences=True))
 model.add(Dropout(0.2))
-model.add(LSTM(units=100, return_sequences=True))
+model.add(LSTM(units=50, return_sequences=True))
 model.add(Dropout(0.2))
-model.add(LSTM(units=100))
+model.add(LSTM(units=50))
 model.add(Dropout(0.2))
 
 # model.add(Dense(units=1, activation="sigmoid"))
+model.add(Dense(50, activation="relu"))
 model.add(Dense(units=3, activation="softmax"))  # for multiple
 
 
