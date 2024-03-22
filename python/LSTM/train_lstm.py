@@ -4,6 +4,7 @@ import pandas as pd
 from keras.layers import LSTM, Dense, Dropout
 from keras.models import Sequential
 from keras.utils import to_categorical
+from keras.optimizers import Adam
 
 from sklearn.model_selection import train_test_split
 
@@ -17,7 +18,7 @@ stealing_dataFrame = pd.read_csv("./files/stealing.txt")
 
 X = []
 y = []
-window_size = 10
+window_size = 5
 
 dataset = noaction_dataFrame.iloc[:, 1:].values
 n_sample = len(dataset)
@@ -62,12 +63,14 @@ model.add(Dropout(0.2))
 
 # model.add(Dense(units=1, activation="sigmoid"))
 model.add(Dense(50, activation="relu"))
-model.add(Dense(units=3, activation="softmax"))  # for multiple
+model.add(Dense(units=3, activation="softmax"))
 
 
 # model.compile(optimizer="adam", metrics=["accuracy"], loss="binary_crossentropy")
 model.compile(
-    optimizer="adam", metrics=["accuracy"], loss="categorical_crossentropy"
+    optimizer=Adam(learning_rate=0.001),
+    metrics=["accuracy"],
+    loss="categorical_crossentropy",
 )  # for multiple
 
 model.fit(X_train, y_train, epochs=24, batch_size=32, validation_data=(X_test, y_test))

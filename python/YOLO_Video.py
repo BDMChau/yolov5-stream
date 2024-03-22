@@ -115,7 +115,7 @@ modelObjectDetection = YOLO("./weights/yolov8x.pt").to(device)
 
 lstm_model = tf.keras.models.load_model("./LSTM/results/lstm01.keras")
 
-window_size = 10
+window_size = 5
 
 
 def video_detection(path_x):
