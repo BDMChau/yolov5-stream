@@ -18,7 +18,7 @@ modelPersonPose = YOLO("./weights/yolov8s-pose.pt").to(device)
 def make_data_from_video():
     data_to_write = []
 
-    cap = cv2.VideoCapture(parent_dir + "/data/noaction.mp4")
+    cap = cv2.VideoCapture(parent_dir + "/data/stealing.mp4")
 
     while cap.isOpened():
         ret, img = cap.read()
@@ -30,6 +30,7 @@ def make_data_from_video():
         modelPersonPoseResults = modelPersonPose(
             img,
             stream=True,
+            conf=0.3
         )
 
         for r in modelPersonPoseResults:
@@ -38,34 +39,13 @@ def make_data_from_video():
 
             names = r.names
             boxes = r.boxes
-            img = r.plot(kpt_line=True, kpt_radius=6)
+            img = r.plot(kpt_line=True, kpt_radius=5)
 
-            for box in boxes:
-                x1, y1, x2, y2 = box.xyxy[0]
-                x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-                conf = math.ceil((box.conf[0] * 100)) / 100
-                class_id = int(box.cls[0])
-                class_name = names[class_id]
-                label = f"{class_name}_{conf}"
-                t_size = cv2.getTextSize(label, 0, fontScale=1, thickness=1)[0]
-                c2 = x1 + t_size[0], y1 - t_size[1] - 3
-
-                cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 3)
-                cv2.rectangle(img, (x1, y1), c2, [255, 0, 255], -1, cv2.LINE_AA)
-                cv2.putText(
-                    img,
-                    label,
-                    (x1, y1 - 2),
-                    0,
-                    1,
-                    [255, 255, 255],
-                    thickness=1,
-                    lineType=cv2.LINE_AA,
-                )
-
+ 
             # POSE
             keypoints_xyn = r.keypoints.xyn[0]  # just get the first
             result_timestep = []
+            print("r.keypoints",r.keypoints)
             for i, keypoint_tensor in enumerate(keypoints_xyn):
                 print("keypoint_tensor", keypoint_tensor)
                 x, y = (
@@ -83,7 +63,7 @@ def make_data_from_video():
 
     # save to txt file
     print("Writing file...")
-    file_name = "noaction"
+    file_name = "stealing"
     df = pd.DataFrame(data_to_write)
     df.to_csv("files/" + file_name + ".txt")
 

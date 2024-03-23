@@ -140,12 +140,14 @@ def video_detection(path_x):
             stream=False,
             persist=True,
             tracker="bytetrack.yaml",
+            conf=0.3
         )
         modelObjectDetectionResults = modelObjectDetection.track(
             source=img,
             stream=False,
             persist=True,
             tracker="bytetrack.yaml",
+            conf=0.3
         )
 
         for r in modelObjectDetectionResults:
@@ -246,6 +248,7 @@ def video_detection(path_x):
                             lstm_model,
                             value,
                             result_queues[key],
+                            key
                         ),
                     )
                     lstmDetect_thread.start()
@@ -293,10 +296,10 @@ def video_detection(path_x):
         yield resized_img
 
 
-def lstmDetect(model, lm_list, result_queue):
+def lstmDetect(model, lm_list, result_queue, track_id):
     class_labels = ["No action", "Picking", "Stealing"]
 
-    threshold = 0.8
+    threshold = 0.7
 
     lm_list = np.array(lm_list)
     lm_list = np.expand_dims(lm_list, axis=0)
@@ -304,7 +307,7 @@ def lstmDetect(model, lm_list, result_queue):
     results = model.predict(lm_list)
     maxValueIndex = np.argmax(results)
 
-    print("PREDICT RESULTS:", results)
+    print("PREDICT RESULTS:", track_id, results)
     if maxValueIndex < len(class_labels):
         if results[0][maxValueIndex] >= threshold:
             final_result = class_labels[maxValueIndex]
