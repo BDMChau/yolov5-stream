@@ -11,10 +11,10 @@ print(f"Using device: {device}")
 
 
 # config YOLO
-modelPersonPose = YOLO("./weights/yolov8s-pose.pt").to(device)
+modelPersonPose = YOLO(parent_dir + "/weights/yolov8l-pose.pt").to(device)
 
 
-def make_data_from_video(path):
+def make_data_from_video(path, file_name):
     data_to_write = []
 
     cap = cv2.VideoCapture(path)
@@ -54,17 +54,16 @@ def make_data_from_video(path):
         cv2.imshow("image", img)
         cv2.waitKey(1)
 
-    # save to txt file
+    # save to csv file
     print("Writing file...")
-    file_name = "stealing"
     df = pd.DataFrame(data_to_write)
-    df.to_csv("files/" + file_name + ".txt")
+    df.to_csv("files/" + file_name + ".csv")
 
     cap.release()
     cv2.destroyAllWindows()
 
 
-def make_data_from_imgs(folder_path):
+def make_data_from_imgs(folder_path, file_name):
     files = os.listdir(folder_path)
     image_files = [file for file in files if file.lower().endswith((".jpg", ".jpeg", ".png"))]
 
@@ -104,15 +103,16 @@ def make_data_from_imgs(folder_path):
         else:
             print(f"Failed to load the image: {image_path}")
             
-     # save to txt file
+     # save to csv file
     print("Writing file...")
-    file_name = "stealing"
     df = pd.DataFrame(data_to_write)
-    df.to_csv("files/" + file_name + ".txt")
+    df.to_csv("files/" + file_name + ".csv")
     cv2.destroyAllWindows()
 
     
 
 if __name__ == "__main__":
-    make_data_from_video(parent_dir + "/data/stealing.mp4")
-    # make_data_from_imgs(parent_dir + "/data/imgs")
+    file_name = "picking"
+    
+    make_data_from_video(parent_dir + "/data/picking.mp4", file_name)
+    # make_data_from_imgs(parent_dir + "/data/imgs", file_name)

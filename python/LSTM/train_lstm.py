@@ -8,13 +8,9 @@ from keras.optimizers import Adam
 
 from sklearn.model_selection import train_test_split
 
-drinking_dataFrame = pd.read_csv("./files/drinking.txt")
-handswing_dataFrame = pd.read_csv("./files/handswing.txt")
-punchnghien_dataFrame = pd.read_csv("./files/punchnghien.txt")
-punch_dataFrame = pd.read_csv("./files/punch.txt")
-noaction_dataFrame = pd.read_csv("./files/noaction.txt")
-picking_dataFrame = pd.read_csv("./files/picking.txt")
-stealing_dataFrame = pd.read_csv("./files/stealing.txt")
+noaction_dataFrame = pd.read_csv("./files/noaction.csv")
+picking_dataFrame = pd.read_csv("./files/picking.csv")
+stealing_dataFrame = pd.read_csv("./files/stealing.csv")
 
 window_size = 5
 

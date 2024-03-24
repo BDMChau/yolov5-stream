@@ -110,7 +110,7 @@ for gpu in gpus:
 
 
 print(f"Using device for YOLO: {device}")
-modelPersonPose = YOLO("./weights/yolov8s-pose.pt").to(device)
+modelPersonPose = YOLO("./weights/yolov8l-pose.pt").to(device)
 modelObjectDetection = YOLO("./weights/yolov8x.pt").to(device)
 
 lstm_model = tf.keras.models.load_model("./LSTM/results/lstm01.keras")
