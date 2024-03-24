@@ -140,7 +140,7 @@ def video_detection(path_x):
             stream=False,
             persist=True,
             tracker="bytetrack.yaml",
-            conf=0.3
+            conf=0.2
         )
         modelObjectDetectionResults = modelObjectDetection.track(
             source=img,

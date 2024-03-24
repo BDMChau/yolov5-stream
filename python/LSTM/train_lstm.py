@@ -52,17 +52,10 @@ model.add(LSTM(units=50, return_sequences=True))
 model.add(Dropout(0.2))
 model.add(LSTM(units=50))
 model.add(Dropout(0.2))
-# model.add(Dense(units=1, activation="sigmoid"))
-model.add(Dense(50, activation="relu"))
-model.add(Dense(units=number_of_classes, activation="softmax"))
 
-# another version
-# model.add(LSTM(64, return_sequences=True, activation='relu', input_shape=(30,1662)))
-# model.add(LSTM(128, return_sequences=True, activation='relu'))
-# model.add(LSTM(64, return_sequences=False, activation='relu'))
-# model.add(Dense(64, activation='relu'))
-# model.add(Dense(32, activation='relu'))
-# model.add(Dense(units=number_of_classes, activation='softmax'))
+model.add(Dense(50, activation="relu"))
+# model.add(Dense(units=1, activation="sigmoid"))
+model.add(Dense(units=number_of_classes, activation="softmax"))
 
 
 # model.compile(optimizer="adam", metrics=["accuracy"], loss="binary_crossentropy")

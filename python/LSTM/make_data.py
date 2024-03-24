@@ -2,7 +2,6 @@ import cv2
 import pandas as pd
 from ultralytics import YOLO
 import torch
-import math
 import os
 
 parent_dir = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
@@ -30,17 +29,14 @@ def make_data_from_video():
         modelPersonPoseResults = modelPersonPose(
             img,
             stream=True,
-            conf=0.3
+            conf=0.2
         )
 
         for r in modelPersonPoseResults:
             if r.boxes is None:
                 continue
 
-            names = r.names
-            boxes = r.boxes
             img = r.plot(kpt_line=True, kpt_radius=5)
-
  
             # POSE
             keypoints_xyn = r.keypoints.xyn[0]  # just get the first
