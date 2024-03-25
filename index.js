@@ -1,6 +1,5 @@
 const express = require("express");
 const async = require("async");
-const { raptorInference, handleLoadModels } = require("./lib/detector");
 const { createCanvas, loadImage } = require("canvas");
 const { pipeline, PassThrough } = require("stream");
 const util = require("util");
@@ -8,6 +7,9 @@ const exec = util.promisify(require("child_process").exec);
 const http = require("http");
 const { spawn } = require("child_process");
 const config = require("./config");
+const axios = require("axios");
+const fs = require("fs");
+const FormData = require("form-data");
 
 const arrayFFmpegProcess = [];
 
@@ -24,7 +26,7 @@ const httpServer = http.createServer(app);
 httpServer.listen({ port: PORT });
 console.log(`AiT Camera Stream Server running at http://localhost:${PORT}/`);
 
-const processFramesFromRTSPStream = async (url, queue, imagesStream) => {
+const processFramesFromRTSPStream = async ({ url, queue, imagesStream }) => {
   const ffmpegProcess = spawn("ffmpeg", [
     "-re",
     "-rtsp_transport",
@@ -48,9 +50,6 @@ const processFramesFromRTSPStream = async (url, queue, imagesStream) => {
 
     const task = {
       frameBuffer: chunk,
-      detectOptions: {
-        isObjectDetectionSeparate: false,
-      },
     };
 
     queue.push({
@@ -69,7 +68,7 @@ const processFramesFromRTSPStream = async (url, queue, imagesStream) => {
   });
 };
 
-const handleImageResult = async (imgResult, imagesStream) => {
+const handleImageResult = (imgResult, imagesStream) => {
   const ffmpegProcessOutput = spawn("ffmpeg", [
     "-i",
     "-",
@@ -86,6 +85,10 @@ const handleImageResult = async (imgResult, imagesStream) => {
 
   ffmpegProcessOutput.stdout.on("data", (chunk) => {
     imagesStream.write(chunk);
+  });
+
+  ffmpegProcessOutput.stderr.on("data", (data) => {
+    console.log("handleImageResult stderr:", data.toString());
   });
 };
 
@@ -161,13 +164,103 @@ const worker = async ({ task, imagesStream }) => {
   }
 };
 
-app.get(`/get-stream`, async (req, res) => {
+// app.get(`/get-stream`, async (req, res) => {
+//   res.writeHead(200, {
+//     "Content-Type": "multipart/x-mixed-replace;boundary=raptorvision",
+//     "Cache-Control": "no-cache",
+//     Connection: "keep-alive",
+//     Pragma: "no-cache",
+//   });
+
+//   res.on("close", async () => {
+//     console.log("on close");
+
+//     // Reload behavior: the close event will be called when connection is reloaded >> so it will empty the current process instead of previous
+//     const prevProcess = arrayFFmpegProcess[0];
+//     if (prevProcess) {
+//       prevProcess.kill();
+//       try {
+//         await exec(
+//           `kill -9 $(ps -f -C ffmpeg | grep ${prevProcess.pid} | awk '{print $2}')`
+//         );
+//       } catch (error) {
+//         console.log("kill ffmpeg err: ", error);
+//       }
+
+//       arrayFFmpegProcess.shift();
+//     }
+//   });
+
+//   const videoUrl = "https://cdn.shinobi.video/videos/theif4.mp4";
+
+//   let rtspStreamUrl = "";
+
+//   // 0: AXIS, 1: AMCREST
+//   if (config.cameraType === 0) {
+//     rtspStreamUrl = `rtsp://raptor:Raptor123!@${config.IP}/axis-media/media.amp`;
+//   } else {
+//     rtspStreamUrl = `rtsp://raptor:Raptor123!@${config.IP}:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif`;
+//   }
+//   console.log(rtspStreamUrl);
+
+//   if (!rtspStreamUrl) {
+//     return res.json("no data");
+//   }
+
+//   const imagesStream = new PassThrough();
+//   await handleLoadModels(); // get detect model function
+
+//   queue = async.queue(worker, 1);
+//   processFramesFromRTSPStream({ url: rtspStreamUrl, queue, imagesStream });
+
+//   pipeline(imagesStream, res, (err) => {
+//     if (err) {
+//       console.error("Error piping output to response:", err);
+//       res.end();
+//     }
+//   });
+// });
+
+///////////////////////////////////
+
+const worker2 = async ({ task, imagesStream, res }) => {
+  try {
+    if (!task?.frameBuffer) return;
+
+    const formData = new FormData();
+    formData.append("file", task.frameBuffer, {
+      filename: `${new Date().getTime()}.jpg`,
+    });
+
+    const response = await axios({
+      method: "POST",
+      url: "http://127.0.0.1:6789/post-image",
+      data: formData,
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+      responseType: "arraybuffer", // important
+    });
+
+    if (response?.data) {
+      imagesStream.write(response.data);
+    }
+  } catch (error) {
+    console.error("Error worker2:", error.message);
+  }
+};
+
+app.get("/fetch-stream", async (req, res) => {
   res.writeHead(200, {
-    "Content-Type": "multipart/x-mixed-replace;boundary=raptorvision",
+    "Content-Type": "multipart/x-mixed-replace;boundary=frame",
     "Cache-Control": "no-cache",
     Connection: "keep-alive",
     Pragma: "no-cache",
   });
+
+  const { ip, type } = req.query;
+
+  console.log(ip, type);
 
   res.on("close", async () => {
     console.log("on close");
@@ -188,27 +281,17 @@ app.get(`/get-stream`, async (req, res) => {
     }
   });
 
-  const videoUrl = "https://cdn.shinobi.video/videos/theif4.mp4";
-
-  let rtspStreamUrl = "";
-
-  // 0: AXIS, 1: AMCREST
-  if (config.cameraType === 0) {
-    rtspStreamUrl = `rtsp://raptor:Raptor123!@${config.IP}/axis-media/media.amp`;
-  } else {
-    rtspStreamUrl = `rtsp://raptor:Raptor123!@${config.IP}:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif`;
-  }
-  console.log(rtspStreamUrl);
-
-  if (!rtspStreamUrl) {
-    return res.json("no data");
-  }
+  let rtspStreamUrl = "https://cdn.shinobi.video/videos/theif4.mp4";
+  // if (type.toLowerCase() === "axis") {
+  //   rtspStreamUrl = `rtsp://raptor:Raptor123!@${ip}/axis-media/media.amp`;
+  // } else {
+  //   rtspStreamUrl = `rtsp://raptor:Raptor123!@${ip}:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif`;
+  // }
 
   const imagesStream = new PassThrough();
-  await handleLoadModels(); // get detect model function
 
-  queue = async.queue(worker, 1);
-  processFramesFromRTSPStream(rtspStreamUrl, queue, imagesStream);
+  const queue = async.queue(worker2, 1);
+  processFramesFromRTSPStream({ url: rtspStreamUrl, queue, imagesStream });
 
   pipeline(imagesStream, res, (err) => {
     if (err) {
@@ -217,5 +300,3 @@ app.get(`/get-stream`, async (req, res) => {
     }
   });
 });
-
-app.get("/fetch-stream", async (req, res) => {});

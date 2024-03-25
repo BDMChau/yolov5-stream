@@ -1,51 +1,62 @@
 from flask import Flask, Response, jsonify, request
 from PIL import Image
 import numpy as np
+import os
 
 import cv2
-import simplejpeg
 
-from YOLO_Video import video_detection, handleDetect
+from YOLO_Video import video_detection, handleDetect, image_detection
 
 app = Flask(__name__)
 
 
-def generate_frames(path_x=""):
-    yolo_output = video_detection(path_x)
+def generate_frames(path_x="",type=""):
+    if type =="image":
+        yolo_output = image_detection(path_x)
+    else:
+        yolo_output = video_detection(path_x)
+        
     for detection_ in yolo_output:
-
         ref, buffer = cv2.imencode(".jpg", detection_)
         frame = buffer.tobytes()
+                 
         yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
+        
+    if type == "image":
+        os.remove(path_x)
+        
+    
 
+@app.route('/post-image', methods=['POST'])
+def detectImage():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+
+    file = request.files['file']
+    temp_file_path = "./imgs/" +file.filename
+    file.save(temp_file_path)
+    
+    return Response(
+        generate_frames(path_x=temp_file_path, type="image"),
+        mimetype="multipart/x-mixed-replace;boundary=frame",
+    )
 
 @app.route("/video")
 def video():
     return Response(
         generate_frames(path_x="./data/test1.mp4"),
         # generate_frames(path_x="https://cdn.shinobi.video/videos/theif4.mp4"),
-        mimetype="multipart/x-mixed-replace; boundary=frame",
+        mimetype="multipart/x-mixed-replace;boundary=frame",
     )
 
 
 @app.route("/stream")
 def stream():
-    url = request.args.get("url")
-    print("url query: ", url)
-    if not url:
-        # url = "rtsp://raptor:Raptor123!@192.168.100.111:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif"
-        # url = "rtsp://raptor:Raptor123!@192.168.100.132:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif"
-        # url = "rtsp://raptor:Raptor123!@192.168.100.36:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif"
-        url = "http://192.168.100.252:8989/get-stream/ZGV2LXJhcHRvci1haQ--/cnRzcDovL3JhcHRvcjpSYXB0b3IxMjMhQDE5Mi4xNjguMTAwLjM2OjU1NC9jYW0vcmVhbG1vbml0b3I_Y2hhbm5lbD0xJnN1YnR5cGU9MCZ1bmljYXN0PXRydWUmcHJvdG89T252aWY-"
 
-    return Response(
-        generate_frames(path_x=url),
-        mimetype="multipart/x-mixed-replace;boundary=frame",
-    )
-
-
-@app.route("/get-stream")
-def stream():
+    # url = "rtsp://raptor:Raptor123!@192.168.100.111:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif"
+    # url = "rtsp://raptor:Raptor123!@192.168.100.132:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif"
+    # url = "rtsp://raptor:Raptor123!@192.168.100.36:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif"
+    url = "http://192.168.100.252:8989/get-stream/ZGV2LXJhcHRvci1haQ--/cnRzcDovL3JhcHRvcjpSYXB0b3IxMjMhQDE5Mi4xNjguMTAwLjM2OjU1NC9jYW0vcmVhbG1vbml0b3I_Y2hhbm5lbD0xJnN1YnR5cGU9MCZ1bmljYXN0PXRydWUmcHJvdG89T252aWY-"
 
     return Response(
         generate_frames(path_x=url),
@@ -63,7 +74,6 @@ def detect():
         return jsonify({"error": "No selected file"}), 400
 
     try:
-        print("fileBufferfileBuffer", file)
         image = Image.open(file.stream).convert("RGB")
         img = np.array(image)
 
