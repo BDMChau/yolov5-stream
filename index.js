@@ -217,3 +217,5 @@ app.get(`/get-stream`, async (req, res) => {
     }
   });
 });
+
+app.get("/fetch-stream", async (req, res) => {});

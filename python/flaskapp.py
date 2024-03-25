@@ -3,6 +3,7 @@ from PIL import Image
 import numpy as np
 
 import cv2
+import simplejpeg
 
 from YOLO_Video import video_detection, handleDetect
 
@@ -12,6 +13,7 @@ app = Flask(__name__)
 def generate_frames(path_x=""):
     yolo_output = video_detection(path_x)
     for detection_ in yolo_output:
+
         ref, buffer = cv2.imencode(".jpg", detection_)
         frame = buffer.tobytes()
         yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
@@ -28,11 +30,26 @@ def video():
 
 @app.route("/stream")
 def stream():
-    # url = "rtsp://raptor:Raptor123!@192.168.100.36:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif"
-    url = "http://192.168.100.252:8989/get-stream/ZGV2LXJhcHRvci1haQ--/cnRzcDovL3JhcHRvcjpSYXB0b3IxMjMhQDE5Mi4xNjguMTAwLjM2OjU1NC9jYW0vcmVhbG1vbml0b3I_Y2hhbm5lbD0xJnN1YnR5cGU9MCZ1bmljYXN0PXRydWUmcHJvdG89T252aWY-"
+    url = request.args.get("url")
+    print("url query: ", url)
+    if not url:
+        # url = "rtsp://raptor:Raptor123!@192.168.100.111:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif"
+        # url = "rtsp://raptor:Raptor123!@192.168.100.132:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif"
+        # url = "rtsp://raptor:Raptor123!@192.168.100.36:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif"
+        url = "http://192.168.100.252:8989/get-stream/ZGV2LXJhcHRvci1haQ--/cnRzcDovL3JhcHRvcjpSYXB0b3IxMjMhQDE5Mi4xNjguMTAwLjM2OjU1NC9jYW0vcmVhbG1vbml0b3I_Y2hhbm5lbD0xJnN1YnR5cGU9MCZ1bmljYXN0PXRydWUmcHJvdG89T252aWY-"
+
     return Response(
         generate_frames(path_x=url),
-        mimetype="multipart/x-mixed-replace; boundary=frame",
+        mimetype="multipart/x-mixed-replace;boundary=frame",
+    )
+
+
+@app.route("/get-stream")
+def stream():
+
+    return Response(
+        generate_frames(path_x=url),
+        mimetype="multipart/x-mixed-replace;boundary=frame",
     )
 
 
@@ -59,4 +76,4 @@ def detect():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=3003, debug=True)
+    app.run(host="0.0.0.0", port=6789, debug=True)
