@@ -170,9 +170,8 @@ def video_detection(path_x):
                 y = y - (h / 2)
 
                 if (
-                    True
-                    # class_name
-                    # != "bottle"
+                    class_name
+                    == "person"
                     # and class_name != "person"
                     #     # and class_name != "Wine"
                     #     # and class_name != "Man"
