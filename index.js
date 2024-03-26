@@ -10,6 +10,10 @@ const config = require("./config");
 const axios = require("axios");
 const fs = require("fs");
 const FormData = require("form-data");
+const poseDetection = require("@tensorflow-models/pose-detection");
+// const tf = require("@tensorflow/tfjs-node-gpu");
+require("@tensorflow/tfjs-backend-webgl");
+require("@tensorflow/tfjs-node-gpu");
 
 const arrayFFmpegProcess = [];
 
@@ -26,11 +30,16 @@ const httpServer = http.createServer(app);
 httpServer.listen({ port: PORT });
 console.log(`AiT Camera Stream Server running at http://localhost:${PORT}/`);
 
-const processFramesFromRTSPStream = async ({ url, queue, imagesStream }) => {
+const processFramesFromRTSPStream = async ({
+  url,
+  queue,
+  imagesStream,
+  detector,
+}) => {
   const ffmpegProcess = spawn("ffmpeg", [
     "-re",
-    "-rtsp_transport",
-    "tcp",
+    // "-rtsp_transport",
+    // "tcp",
     "-i",
     url,
     "-f",
@@ -38,7 +47,7 @@ const processFramesFromRTSPStream = async ({ url, queue, imagesStream }) => {
     "-q:v",
     "10",
     "-vf",
-    `scale=${configRatio.originalWidth}:${configRatio.originalHeight},fps=6`,
+    `scale=${configRatio.originalWidth}:${configRatio.originalHeight}`,
     "-c:v",
     "mjpeg",
     "-",
@@ -46,8 +55,6 @@ const processFramesFromRTSPStream = async ({ url, queue, imagesStream }) => {
   arrayFFmpegProcess.push(ffmpegProcess);
 
   ffmpegProcess.stdout.on("data", async (chunk) => {
-    // console.log("chunk", chunk);
-
     const task = {
       frameBuffer: chunk,
     };
@@ -55,6 +62,7 @@ const processFramesFromRTSPStream = async ({ url, queue, imagesStream }) => {
     queue.push({
       task,
       imagesStream,
+      detector,
     });
   });
 
@@ -77,7 +85,7 @@ const handleImageResult = (imgResult, imagesStream) => {
     "-f",
     "mpjpeg",
     "-boundary_tag",
-    "raptorvision",
+    "frame",
     "-",
   ]);
   ffmpegProcessOutput.stdin.write(imgResult);
@@ -222,30 +230,23 @@ const worker = async ({ task, imagesStream }) => {
 // });
 
 ///////////////////////////////////
-const worker2 = async ({ task, imagesStream }) => {
+const worker2 = async ({ task, imagesStream, detector }) => {
   try {
-    if (!task?.frameBuffer) return;
+    const img = await loadImage(task.frameBuffer);
+    const canvas = createCanvas(img.width, img.height);
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0, img.width, img.height);
+    const poses = await detector.estimatePoses(canvas);
 
-    const formData = new FormData();
-    formData.append("file", task.frameBuffer, {
-      filename: `${new Date().getTime()}.jpg`,
-    });
+    // console.log(poses[0].keypoints);
 
-    const response = await axios({
-      method: "POST",
-      url: "http://127.0.0.1:6789/post-image",
-      data: formData,
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-      responseType: "arraybuffer", // important
-    });
+    const imgResult = canvas.toBuffer();
+    // const frameFileName = `imgs/frame_${currentTime}.jpg`;
+    // fs.writeFileSync(frameFileName, imageBufferResult);
 
-    if (response?.data) {
-      imagesStream.write(response.data);
-    }
+    handleImageResult(imgResult, imagesStream);
   } catch (error) {
-    console.error("Error worker2:", error.message);
+    console.log("AAAAAA", error);
   }
 };
 
@@ -256,6 +257,9 @@ app.get("/fetch-stream", async (req, res) => {
     Connection: "keep-alive",
     Pragma: "no-cache",
   });
+
+  const model = poseDetection.SupportedModels.MoveNet;
+  const detector = await poseDetection.createDetector(model);
 
   const { ip, type } = req.query;
 
@@ -282,17 +286,24 @@ app.get("/fetch-stream", async (req, res) => {
     }
   });
 
-  // let rtspStreamUrl = "https://cdn.shinobi.video/videos/theif4.mp4";
-  if (type.toLowerCase() === "axis") {
-    rtspStreamUrl = `rtsp://raptor:Raptor123!@${ip}/axis-media/media.amp`;
-  } else {
-    rtspStreamUrl = `rtsp://raptor:Raptor123!@${ip}:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif`;
-  }
+  let rtspStreamUrl = "https://cdn.shinobi.video/videos/theif4.mp4";
+  // if (type.toLowerCase() === "axis") {
+  //   rtspStreamUrl = `rtsp://raptor:Raptor123!@${ip}/axis-media/media.amp`;
+  // } else {
+  //   rtspStreamUrl = `rtsp://raptor:Raptor123!@${ip}:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif`;
+  // }
 
   const imagesStream = new PassThrough();
 
+  // console.log("Using TensorFlow backend: ", tf.getBackend());
+
   const queue = async.queue(worker2, 1);
-  processFramesFromRTSPStream({ url: rtspStreamUrl, queue, imagesStream });
+  processFramesFromRTSPStream({
+    url: rtspStreamUrl,
+    queue,
+    imagesStream,
+    detector,
+  });
 
   pipeline(imagesStream, res, (err) => {
     if (err) {
