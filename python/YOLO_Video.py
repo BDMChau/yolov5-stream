@@ -313,7 +313,9 @@ result_queues = {}
 
 def image_detection(file_bytes):
     nparr = np.frombuffer(file_bytes, np.uint8)
+
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    img = insert_logo(img, "./data/RVLogo.png", 3, 3)
 
     if img is not None:
         width = int(img.shape[1])
@@ -360,11 +362,13 @@ def image_detection(file_bytes):
                 ):
                     continue
 
-                t_size = cv2.getTextSize(label, 0, fontScale=1, thickness=1)[0]
-                c2 = x1 + t_size[0], y1 - t_size[1] + 25
+                t_size = cv2.getTextSize(
+                    label, cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.4, thickness=1
+                )[0]
+                c2 = x1 + t_size[0], y1 - t_size[1] + 15
 
                 cv2.rectangle(img, (x1 - 3, y1 - 16), (x2, y2), (51, 153, 0), 2)
-                cv2.rectangle(img, (x1, y1 - 25), c2, (51, 153, 0), -1, cv2.LINE_AA)
+                cv2.rectangle(img, (x1, y1 - 14), c2, (51, 153, 0), -1, cv2.LINE_AA)
                 cv2.putText(
                     img,
                     label,
@@ -420,6 +424,7 @@ def image_detection(file_bytes):
                     items_ltsm[key] = []
 
             for key, value in time_steps_items.items():
+                break
                 if len(value) == window_size:
                     result_queues[key] = queue.Queue()
                     lstmDetect_thread = threading.Thread(
@@ -450,11 +455,13 @@ def image_detection(file_bytes):
                 label = f"{class_name}"
                 track_id = ids[i]
 
-                t_size = cv2.getTextSize(label, 0, fontScale=1, thickness=1)[0]
-                c2 = x1 + t_size[0], y1 - t_size[1] + 25
+                t_size = cv2.getTextSize(
+                    label, cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.4, thickness=1
+                )[0]
+                c2 = x1 + t_size[0], y1 - t_size[1] + 15
 
                 cv2.rectangle(img, (x1 - 3, y1 - 16), (x2, y2), (51, 153, 0), 2)
-                cv2.rectangle(img, (x1, y1 - 25), c2, (51, 153, 0), -1, cv2.LINE_AA)
+                cv2.rectangle(img, (x1, y1 - 14), c2, (51, 153, 0), -1, cv2.LINE_AA)
                 cv2.putText(
                     img,
                     label,
@@ -466,33 +473,68 @@ def image_detection(file_bytes):
                     lineType=cv2.LINE_AA,
                 )
 
-                # lstm_label = "Nothing"
-                # if track_id in lstm_labels:
-                #     lstm_label = lstm_labels[track_id]
+        # lstm_label = "Nothing"
+        # if track_id in lstm_labels:
+        #     lstm_label = lstm_labels[track_id]
 
-                # label = f"{lstm_label}"
-                # t_size = cv2.getTextSize(label, 0, fontScale=1, thickness=1)[0]
-                # c2 = x1 + t_size[0], y1 - t_size[1] + 25
+        # label = f"{lstm_label}"
+        # t_size = cv2.getTextSize(label, 0, fontScale=1, thickness=1)[0]
+        # c2 = x1 + t_size[0], y1 - t_size[1] + 25
 
-                # # cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 1)
-                # cv2.rectangle(img, (x1, y1 + 25), c2, [255, 0, 255], -1, cv2.LINE_AA)
-                # cv2.putText(
-                #     img,
-                #     label,
-                #     (x1, y1 + 25),
-                #     0,
-                #     1,
-                #     [255, 255, 255],
-                #     thickness=1,
-                #     lineType=cv2.LINE_AA,
-                # )
+        # # cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 1)
+        # cv2.rectangle(img, (x1, y1 + 25), c2, [255, 0, 255], -1, cv2.LINE_AA)
+        # cv2.putText(
+        #     img,
+        #     label,
+        #     (x1, y1 + 25),
+        #     0,
+        #     1,
+        #     [255, 255, 255],
+        #     thickness=1,
+        #     lineType=cv2.LINE_AA,
+        # )
 
         print("lstm_labels lstm_labelsAAAAAAAA:", lstm_labels)
-        scale_percent = 150
+        scale_percent = 120
         resizeW = int(width * scale_percent / 100)
         resizeH = int(height * scale_percent / 100)
         resized_img = cv2.resize(img, (resizeW, resizeH), interpolation=cv2.INTER_AREA)
         yield resized_img
+
+
+def insert_logo(main_image, logo_image_path, x_offset, y_offset):
+    main_image_copy = (
+        main_image.copy()
+    )  # Make a copy to keep the original image unchanged
+    logo_image = cv2.imread(
+        logo_image_path, cv2.IMREAD_UNCHANGED
+    )  # Read logo with alpha channel
+
+    logo_height, logo_width, _ = logo_image.shape[:3]
+
+    # Define region of interest (ROI) for placing the logo
+    roi = main_image_copy[
+        y_offset : y_offset + logo_height, x_offset : x_offset + logo_width
+    ]
+
+    # If has an alpha channel, blend it with the main image
+    if logo_image.shape[2] == 4:
+        alpha = logo_image[:, :, 3] / 255.0
+        for c in range(3):
+            main_image_copy[
+                y_offset : y_offset + logo_height, x_offset : x_offset + logo_width, c
+            ] = (1 - alpha) * main_image_copy[
+                y_offset : y_offset + logo_height, x_offset : x_offset + logo_width, c
+            ] + alpha * logo_image[
+                :, :, c
+            ]
+
+    else:
+        main_image_copy[
+            y_offset : y_offset + logo_height, x_offset : x_offset + logo_width
+        ] = logo_image[:, :, :3]
+
+    return main_image_copy
 
 
 def handleDetect(img):

@@ -36,7 +36,7 @@ const processFramesFromRTSPStream = async ({ url, queue, imagesStream }) => {
     "-f",
     "image2pipe",
     "-q:v",
-    "10",
+    "7",
     "-vf",
     `scale=${configRatio.originalWidth}:${configRatio.originalHeight},fps=6`,
     "-c:v",
