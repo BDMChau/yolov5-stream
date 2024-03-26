@@ -10,36 +10,39 @@ from YOLO_Video import video_detection, handleDetect, image_detection
 app = Flask(__name__)
 
 
-def generate_frames(path_x="",type=""):
-    if type =="image":
-        yolo_output = image_detection(path_x)
-    else:
-        yolo_output = video_detection(path_x)
-        
+def generate_frames(path_x="", type=""):
+    yolo_output = video_detection(path_x)
+
     for detection_ in yolo_output:
-        ref, buffer = cv2.imencode(".jpg", detection_)
-        frame = buffer.tobytes()
-                 
-        yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
-        
-    if type == "image":
-        os.remove(path_x)
-        
-    
+        success, buffer = cv2.imencode(".jpg", detection_)
+        if success:
+            frame = buffer.tobytes()
+            yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
 
-@app.route('/post-image', methods=['POST'])
+
+def handle_image(file_bytes):
+    yolo_output = image_detection(file_bytes)
+    for detection_ in yolo_output:
+        success, buffer = cv2.imencode(".jpg", detection_)
+        if success:
+            frame = buffer.tobytes()
+            yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
+
+
+@app.route("/post-image", methods=["POST"])
 def detectImage():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file part'}), 400
+    if "file" not in request.files:
+        return jsonify({"error": "No file part"}), 400
 
-    file = request.files['file']
-    temp_file_path = "./imgs/" +file.filename
-    file.save(temp_file_path)
-    
+    file = request.files["file"]
+
+    file_in_memory = file.read()
+
     return Response(
-        generate_frames(path_x=temp_file_path, type="image"),
+        handle_image(file_bytes=file_in_memory),
         mimetype="multipart/x-mixed-replace;boundary=frame",
     )
+
 
 @app.route("/video")
 def video():

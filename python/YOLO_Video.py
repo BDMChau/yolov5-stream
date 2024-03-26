@@ -110,8 +110,8 @@ for gpu in gpus:
 
 
 print(f"Using device for YOLO: {device}")
-modelPersonPose = YOLO("./weights/yolov8l-pose.pt").to(device)
-modelObjectDetection = YOLO("./weights/yolov8x.pt").to(device)
+modelPersonPose = YOLO("./weights/yolov8m-pose.pt").to(device)
+modelObjectDetection = YOLO("./weights/yolov8m.pt").to(device)
 
 lstm_model = tf.keras.models.load_model("./LSTM/results/lstm01.keras")
 
@@ -136,18 +136,10 @@ def video_detection(path_x):
             continue
 
         modelPersonPoseResults = modelPersonPose.track(
-            img,
-            stream=False,
-            persist=True,
-            tracker="bytetrack.yaml",
-            conf=0.2
+            img, stream=False, persist=True, tracker="bytetrack.yaml", conf=0.2
         )
         modelObjectDetectionResults = modelObjectDetection.track(
-            source=img,
-            stream=False,
-            persist=True,
-            tracker="bytetrack.yaml",
-            conf=0.3
+            source=img, stream=False, persist=True, tracker="bytetrack.yaml", conf=0.3
         )
 
         for r in modelObjectDetectionResults:
@@ -228,7 +220,7 @@ def video_detection(path_x):
                     items_ltsm[track_id].append(xn)
                     items_ltsm[track_id].append(yn)
 
-                    # cv2.circle(img, (x, y), 5, (0, 255, 0), -1)
+                    # cv2.circle(img, (x, y), 5, (51, 153, 0), -1)
 
             for key, value in items_ltsm.items():
                 if len(value) > 0:
@@ -243,12 +235,7 @@ def video_detection(path_x):
                     result_queues[key] = queue.Queue()
                     lstmDetect_thread = threading.Thread(
                         target=lstmDetect,
-                        args=(
-                            lstm_model,
-                            value,
-                            result_queues[key],
-                            key
-                        ),
+                        args=(lstm_model, value, result_queues[key], key),
                     )
                     lstmDetect_thread.start()
 
@@ -318,12 +305,15 @@ def lstmDetect(model, lm_list, result_queue, track_id):
     result_queue.put(final_result)
 
 
-def image_detection(path_x):
-    time_steps_items = {}
-    lstm_labels = {}
+# //////////////////////////////// image
+time_steps_items = {}
+lstm_labels = {}
+result_queues = {}
 
-    result_queues = {}
-    img = cv2.imread(path_x)
+
+def image_detection(file_bytes):
+    nparr = np.frombuffer(file_bytes, np.uint8)
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
     if img is not None:
         width = int(img.shape[1])
@@ -353,7 +343,7 @@ def image_detection(path_x):
                 conf = math.ceil((box.conf[i] * 100)) / 100
                 class_id = int(box.cls[i])
                 class_name = classNamesCoco[class_id]
-                label = f"{ids[i]}:{class_name}_{conf}"
+                label = f"{class_name}"
 
                 xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4))).view(-1).tolist()
                 x, y, w, h = xywh
@@ -361,9 +351,8 @@ def image_detection(path_x):
                 y = y - (h / 2)
 
                 if (
-                    True
-                    # class_name
-                    # != "bottle"
+                    class_name
+                    == "person"
                     # and class_name != "person"
                     #     # and class_name != "Wine"
                     #     # and class_name != "Man"
@@ -372,17 +361,17 @@ def image_detection(path_x):
                     continue
 
                 t_size = cv2.getTextSize(label, 0, fontScale=1, thickness=1)[0]
-                c2 = x1 + t_size[0], y1 - t_size[1] - 3
+                c2 = x1 + t_size[0], y1 - t_size[1] + 25
 
-                cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 1)
-                cv2.rectangle(img, (x1, y1), c2, [255, 0, 255], -1, cv2.LINE_AA)
+                cv2.rectangle(img, (x1 - 3, y1 - 16), (x2, y2), (51, 153, 0), 2)
+                cv2.rectangle(img, (x1, y1 - 25), c2, (51, 153, 0), -1, cv2.LINE_AA)
                 cv2.putText(
                     img,
                     label,
                     (x1, y1 - 2),
-                    0,
-                    1,
-                    [255, 255, 255],
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.4,
+                    (255, 255, 255),
                     thickness=1,
                     lineType=cv2.LINE_AA,
                 )
@@ -395,7 +384,7 @@ def image_detection(path_x):
             names = r.names
             boxes = r.boxes
             ids = r.boxes.id.cpu().numpy().astype(int)
-            img = r.plot(kpt_line=True, kpt_radius=5)
+            # img = r.plot(kpt_line=True, kpt_radius=5, boxes=False, labels=False)
 
             items_ltsm = {}
             for i, keypoints_xyn in enumerate(r.keypoints.xyn):
@@ -420,7 +409,7 @@ def image_detection(path_x):
                     items_ltsm[track_id].append(xn)
                     items_ltsm[track_id].append(yn)
 
-                    # cv2.circle(img, (x, y), 5, (0, 255, 0), -1)
+                    # cv2.circle(img, (x, y), 5, (51, 153, 0), -1)
 
             for key, value in items_ltsm.items():
                 if len(value) > 0:
@@ -446,8 +435,11 @@ def image_detection(path_x):
                     time_steps_items[key] = []
 
             for key, value in result_queues.items():
-                if not value.empty():
-                    lstm_labels[key] = value.get()
+                if value is not None:
+                    if not value.empty():
+                        lstm_labels[key] = value.get()
+
+                    result_queues[key] = None
 
             for i, box in enumerate(boxes):
                 x1, y1, x2, y2 = box.xyxy[0]
@@ -455,28 +447,45 @@ def image_detection(path_x):
                 conf = math.ceil((box.conf[0] * 100)) / 100
                 class_id = int(box.cls[0])
                 class_name = names[class_id]
+                label = f"{class_name}"
                 track_id = ids[i]
 
-                lstm_label = "Nothing"
-                if track_id in lstm_labels:
-                    lstm_label = lstm_labels[track_id]
-
-                label = f"{lstm_label}"
                 t_size = cv2.getTextSize(label, 0, fontScale=1, thickness=1)[0]
                 c2 = x1 + t_size[0], y1 - t_size[1] + 25
 
-                # cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 1)
-                cv2.rectangle(img, (x1, y1 + 25), c2, [255, 0, 255], -1, cv2.LINE_AA)
+                cv2.rectangle(img, (x1 - 3, y1 - 16), (x2, y2), (51, 153, 0), 2)
+                cv2.rectangle(img, (x1, y1 - 25), c2, (51, 153, 0), -1, cv2.LINE_AA)
                 cv2.putText(
                     img,
                     label,
-                    (x1, y1 + 25),
-                    0,
-                    1,
-                    [255, 255, 255],
+                    (x1, y1 - 2),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.4,
+                    (255, 255, 255),
                     thickness=1,
                     lineType=cv2.LINE_AA,
                 )
+
+                # lstm_label = "Nothing"
+                # if track_id in lstm_labels:
+                #     lstm_label = lstm_labels[track_id]
+
+                # label = f"{lstm_label}"
+                # t_size = cv2.getTextSize(label, 0, fontScale=1, thickness=1)[0]
+                # c2 = x1 + t_size[0], y1 - t_size[1] + 25
+
+                # # cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 1)
+                # cv2.rectangle(img, (x1, y1 + 25), c2, [255, 0, 255], -1, cv2.LINE_AA)
+                # cv2.putText(
+                #     img,
+                #     label,
+                #     (x1, y1 + 25),
+                #     0,
+                #     1,
+                #     [255, 255, 255],
+                #     thickness=1,
+                #     lineType=cv2.LINE_AA,
+                # )
 
         print("lstm_labels lstm_labelsAAAAAAAA:", lstm_labels)
         scale_percent = 150

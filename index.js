@@ -20,7 +20,7 @@ const configRatio = {
   resizeHeight: 480,
 };
 
-const PORT = 5001;
+const PORT = 5555;
 const app = express();
 const httpServer = http.createServer(app);
 httpServer.listen({ port: PORT });
@@ -36,7 +36,7 @@ const processFramesFromRTSPStream = async ({ url, queue, imagesStream }) => {
     "-f",
     "image2pipe",
     "-q:v",
-    "8",
+    "10",
     "-vf",
     `scale=${configRatio.originalWidth}:${configRatio.originalHeight},fps=6`,
     "-c:v",
@@ -222,8 +222,7 @@ const worker = async ({ task, imagesStream }) => {
 // });
 
 ///////////////////////////////////
-
-const worker2 = async ({ task, imagesStream, res }) => {
+const worker2 = async ({ task, imagesStream }) => {
   try {
     if (!task?.frameBuffer) return;
 
@@ -260,7 +259,9 @@ app.get("/fetch-stream", async (req, res) => {
 
   const { ip, type } = req.query;
 
-  console.log(ip, type);
+  if (!ip || !type) {
+    return res.json("Error: missing ip or type");
+  }
 
   res.on("close", async () => {
     console.log("on close");
@@ -281,12 +282,12 @@ app.get("/fetch-stream", async (req, res) => {
     }
   });
 
-  let rtspStreamUrl = "https://cdn.shinobi.video/videos/theif4.mp4";
-  // if (type.toLowerCase() === "axis") {
-  //   rtspStreamUrl = `rtsp://raptor:Raptor123!@${ip}/axis-media/media.amp`;
-  // } else {
-  //   rtspStreamUrl = `rtsp://raptor:Raptor123!@${ip}:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif`;
-  // }
+  // let rtspStreamUrl = "https://cdn.shinobi.video/videos/theif4.mp4";
+  if (type.toLowerCase() === "axis") {
+    rtspStreamUrl = `rtsp://raptor:Raptor123!@${ip}/axis-media/media.amp`;
+  } else {
+    rtspStreamUrl = `rtsp://raptor:Raptor123!@${ip}:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif`;
+  }
 
   const imagesStream = new PassThrough();
 
