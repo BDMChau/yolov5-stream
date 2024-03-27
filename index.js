@@ -267,7 +267,7 @@ app.get("/fetch-stream", async (req, res) => {
     console.log("on close");
 
     // Reload behavior: the close event will be called when connection is reloaded >> so it will empty the current process instead of previous
-    const prevProcess = arrayFFmpegProcess[0];
+    const prevProcess = arrayFFmpegProcess[arrayFFmpegProcess.length - 2];
     if (prevProcess) {
       prevProcess.kill();
       try {
